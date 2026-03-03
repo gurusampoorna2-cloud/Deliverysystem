@@ -14,12 +14,20 @@
         .custom-scrollbar::-webkit-scrollbar { width: 6px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: #f1f1f1; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        .loading-spinner { border: 3px solid #f3f3f3; border-top: 3px solid #ea580c; border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-900 overflow-x-hidden">
 
+    <!-- Loading State Overlay -->
+    <div id="loadingOverlay" class="fixed inset-0 z-[200] bg-white flex flex-col items-center justify-center space-y-4">
+        <div class="loading-spinner"></div>
+        <p class="text-xs font-black uppercase tracking-widest text-slate-400">Syncing with GURU Cloud...</p>
+    </div>
+
     <!-- Sidebar Overlay -->
-    <div id="sidebarOverlay" class="fixed inset-0 z-40 bg-slate-900/60 hidden transition-opacity duration-300"></div>
+    <div id="sidebarOverlay" class="fixed inset-0 z-40 bg-slate-900/60 hidden transition-opacity duration-300" onclick="window.toggleSidebar()"></div>
 
     <!-- Sidebar Drawer -->
     <aside id="sidebar" class="fixed inset-y-0 left-0 z-50 w-72 bg-white shadow-2xl sidebar-transition -translate-x-full">
@@ -31,672 +39,607 @@
                     </div>
                     <h1 class="text-xl font-black tracking-tighter text-slate-900 uppercase italic">GURU</h1>
                 </div>
-                <button onclick="toggleSidebar()" class="text-slate-400 hover:text-slate-900">
+                <button onclick="window.toggleSidebar()" class="text-slate-400 hover:text-slate-900">
                     <i data-lucide="x"></i>
                 </button>
             </div>
-
-            <nav id="navLinks" class="flex-1 space-y-1">
-                <!-- Nav items dynamically generated -->
-            </nav>
+            <nav id="navLinks" class="flex-1 space-y-2 overflow-y-auto custom-scrollbar pr-1"></nav>
         </div>
     </aside>
 
-    <!-- Main Wrapper -->
     <main class="min-h-screen flex flex-col">
-        <!-- Top Navigation -->
         <nav class="h-16 bg-white border-b border-slate-200 flex items-center px-4 md:px-8 sticky top-0 z-30">
             <div class="absolute left-4">
-                <button onclick="toggleSidebar()" class="p-2 hover:bg-slate-50 rounded-lg text-slate-600 flex items-center gap-2">
+                <button onclick="window.toggleSidebar()" class="p-2 hover:bg-slate-50 rounded-lg text-slate-600 flex items-center gap-2">
                     <i data-lucide="menu"></i>
                     <span class="hidden md:block text-[10px] font-black uppercase tracking-widest">Menu</span>
                 </button>
             </div>
             <div class="flex-1 text-center">
-                <h1 class="text-base md:text-lg font-black text-slate-900 tracking-[0.2em] uppercase italic inline-block px-6">
-                    GURU Delivery System
-                </h1>
+                <h1 class="text-base md:text-lg font-black text-slate-900 tracking-[0.2em] uppercase italic inline-block px-6 text-orange-600">GURU Delivery System</h1>
             </div>
         </nav>
 
-        <!-- Dynamic Content Container -->
         <div id="app" class="flex-1 p-4 md:p-8 max-w-7xl mx-auto w-full">
             <div id="sectionHeader" class="mb-8 animate-in fade-in slide-in-from-top-2">
                 <h2 id="viewTitle" class="text-2xl font-black text-slate-900 uppercase tracking-tight">View Title</h2>
-                <p class="text-xs text-slate-400 font-bold tracking-widest uppercase mt-1">GURU Operations Control</p>
+                <p class="text-xs text-slate-400 font-bold tracking-widest uppercase mt-1">Cloud Control Dashboard</p>
             </div>
-
-            <div id="viewContent" class="pb-20">
-                <!-- Content injected here by JS -->
-            </div>
+            <div id="viewContent" class="pb-20"></div>
         </div>
     </main>
 
     <!-- Global Modal Container -->
     <div id="modalContainer" class="fixed inset-0 z-[100] flex items-center justify-center p-4 hidden modal-bg">
-        <div id="modalBody" class="bg-white w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95">
-            <!-- Modal content injected here -->
-        </div>
+        <div id="modalBody" class="bg-white w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95"></div>
     </div>
 
-    <script>
+    <!-- Firebase SDK Implementation -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, doc, setDoc, addDoc, updateDoc, deleteDoc, onSnapshot, query, where, orderBy } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // --- Firebase Configuration ---
+        const providedConfig = {
+            apiKey: "AIzaSyChCQIDBXdtEoJZPBrJxDQWB8bVobZiBRQ",
+            authDomain: "gurudeliverysystem.firebaseapp.com",
+            projectId: "gurudeliverysystem",
+            storageBucket: "gurudeliverysystem.firebasestorage.app",
+            messagingSenderId: "197900697167",
+            appId: "1:197900697167:web:210d24d7e61f70360bb43a",
+            measurementId: "G-W19WCFKBFG"
+        };
+
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : providedConfig;
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'guru-delivery-system-v1';
+        
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
         // --- Central State ---
         let state = {
+            user: null,
             currentView: 'customers',
-            customers: [
-                { id: "C-101", name: "Alice Johnson", primaryPhone: "1234567890", alternatePhone: "0987654321", address: "123 Maple St, NY", addressLink: "https://maps.google.com" },
-                { id: "C-102", name: "Bob Smith", primaryPhone: "9876543210", alternatePhone: "", address: "456 Oak Ave, CA", addressLink: "" }
-            ],
-            deliveries: [
-                { id: "ORD-001", customerId: "C-101", customerName: "Alice Johnson", driver: "Rajesh", status: "Delivered", priority: "High", amount: "550", paymentMode: "Cash", date: "2024-05-20", time: "10:30 AM", assignedAt: Date.now() - 7200000, deliveredAt: Date.now() - 3600000 }
-            ],
-            drivers: [
-                { name: "Rajesh", phone: "9988776655", addressLink: "" },
-                { name: "Suresh", phone: "8877665544", addressLink: "" }
-            ],
+            customers: [],
+            deliveries: [],
+            drivers: [],
             customerVisibleCount: 10,
             editingCustomer: null,
-            editingDriver: null
+            editingDriverIndex: null,
+            activeTodayDriver: null,
+            performanceFilter: { driver: 'All', fromDate: '', toDate: '' },
+            topCustomerFilter: { fromDate: '', toDate: '', customerId: '' },
+            listenersStarted: false,
+            initialLoadCount: 0
         };
 
         const menuItems = [
             { id: 'customers', label: 'Customer Data', icon: 'users' },
             { id: 'assign', label: 'Assign', icon: 'truck' },
-            { id: 'today', label: 'Today Delivery', icon: 'calendar' },
             { id: 'past', label: 'Past Orders', icon: 'history' },
-            { id: 'analysis', label: 'Analysis', icon: 'bar-chart-3' },
-            { id: 'settings', label: 'Settings', icon: 'settings' }
+            { id: 'top_customers', label: 'Top Customers', icon: 'award' },
+            { id: 'settings', label: 'Settings', icon: 'settings' },
+            { id: 'today', label: 'Today Delivery', icon: 'calendar', special: true },
+            { id: 'my_performance', label: 'My Performance', icon: 'user-check', special: true }
         ];
 
-        // --- Core Functions ---
-        function init() {
-            renderSidebar();
-            navigateTo('customers');
-            lucide.createIcons();
-        }
+        // --- Core Helper Functions ---
+        window.formatDuration = (ms) => {
+            if (!ms || ms < 0) return "N/A";
+            const minutes = Math.floor(ms / 60000);
+            if (minutes < 60) return `${minutes}m`;
+            const hours = Math.floor(minutes / 60);
+            return `${hours}h ${minutes % 60}m`;
+        };
 
-        function toggleSidebar() {
+        window.formatTime = (ts) => ts ? new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true }) : "-";
+
+        window.toggleSidebar = () => {
             const sb = document.getElementById('sidebar');
             const over = document.getElementById('sidebarOverlay');
+            if (!sb || !over) return;
             const isOpen = !sb.classList.contains('-translate-x-full');
-            
-            if (isOpen) {
-                sb.classList.add('-translate-x-full');
-                over.classList.add('hidden');
-            } else {
-                sb.classList.remove('-translate-x-full');
-                over.classList.remove('hidden');
+            sb.classList.toggle('-translate-x-full', isOpen);
+            over.classList.toggle('hidden', isOpen);
+        };
+
+        window.navigateTo = (id) => {
+            state.currentView = id;
+            const item = menuItems.find(m => m.id === id);
+            if (item) {
+                const titleEl = document.getElementById('viewTitle');
+                if (titleEl) titleEl.innerText = item.label;
+            }
+            renderSidebar();
+            renderView();
+            const sb = document.getElementById('sidebar');
+            if (sb && !sb.classList.contains('-translate-x-full')) window.toggleSidebar();
+            window.scrollTo(0, 0);
+        };
+
+        window.openModal = (html) => {
+            const body = document.getElementById('modalBody');
+            const container = document.getElementById('modalContainer');
+            if (body && container) {
+                body.innerHTML = html;
+                container.classList.remove('hidden');
+                lucide.createIcons();
+            }
+        };
+
+        window.closeModal = () => {
+            const container = document.getElementById('modalContainer');
+            if (container) container.classList.add('hidden');
+        };
+
+        // --- Backend Auth & Listeners ---
+        async function initBackend() {
+            try {
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+                
+                onAuthStateChanged(auth, (user) => {
+                    if (user) {
+                        state.user = user;
+                        if (!state.listenersStarted) {
+                            state.listenersStarted = true;
+                            startListeners();
+                        }
+                    }
+                });
+            } catch (error) {
+                console.error("Auth Error:", error);
+                document.getElementById('loadingOverlay').innerHTML = `<p class="text-rose-600 font-bold p-4 text-center text-xs uppercase tracking-widest">Authentication Failed. Please Refresh.</p>`;
             }
         }
 
-        function navigateTo(id) {
-            state.currentView = id;
-            const item = menuItems.find(m => m.id === id);
-            document.getElementById('viewTitle').innerText = item.label;
-            renderSidebar();
-            renderView();
-            if (window.innerWidth < 1024) toggleSidebar();
-            window.scrollTo(0, 0);
+        function startListeners() {
+            const publicPath = (coll) => collection(db, 'artifacts', appId, 'public', 'data', coll);
+
+            onSnapshot(publicPath('customers'), (snapshot) => {
+                state.customers = snapshot.docs.map(doc => ({ firebaseId: doc.id, ...doc.data() }));
+                checkInitialLoading();
+            }, (err) => console.error("Customer sync failed", err));
+
+            onSnapshot(publicPath('deliveries'), (snapshot) => {
+                state.deliveries = snapshot.docs.map(doc => ({ firebaseId: doc.id, ...doc.data() }));
+                checkInitialLoading();
+            }, (err) => console.error("Deliveries sync failed", err));
+
+            onSnapshot(publicPath('drivers'), (snapshot) => {
+                state.drivers = snapshot.docs.map(doc => ({ firebaseId: doc.id, ...doc.data() }));
+                if (!state.activeTodayDriver && state.drivers.length > 0) state.activeTodayDriver = state.drivers[0].name;
+                checkInitialLoading();
+            }, (err) => console.error("Drivers sync failed", err));
         }
 
+        function checkInitialLoading() {
+            state.initialLoadCount++;
+            if (state.initialLoadCount >= 3) {
+                const overlay = document.getElementById('loadingOverlay');
+                if (overlay) overlay.classList.add('hidden');
+                renderSidebar();
+                renderView();
+            }
+        }
+
+        // --- Data Operations ---
+        window.saveCustomer = async (data) => {
+            if (!state.user) return;
+            const coll = collection(db, 'artifacts', appId, 'public', 'data', 'customers');
+            if (state.editingCustomer) {
+                await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'customers', state.editingCustomer.firebaseId), data);
+                state.editingCustomer = null;
+            } else {
+                await addDoc(coll, data);
+            }
+            window.navigateTo('customers');
+        };
+
+        window.deleteCustomer = async (fid) => { if (confirm("Delete customer?")) await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'customers', fid)); };
+
+        window.saveAssignment = async (data) => { await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'deliveries'), data); window.closeModal(); };
+
+        window.deleteOrder = (fid) => {
+            window.openModal(`
+                <div class="p-8 text-center space-y-6">
+                    <div class="w-16 h-16 bg-rose-50 text-rose-600 rounded-full flex items-center justify-center mx-auto mb-4"><i data-lucide="alert-triangle"></i></div>
+                    <h3 class="text-xl font-black uppercase tracking-tight">Remove Task?</h3>
+                    <p class="text-slate-500 text-sm">Do you want to delete this assignment permanently?</p>
+                    <div class="grid grid-cols-2 gap-3 pt-4">
+                        <button onclick="window.confirmDeleteOrder('${fid}')" class="bg-rose-600 text-white py-3 rounded-xl font-black uppercase text-xs shadow-lg shadow-rose-100">Delete</button>
+                        <button onclick="window.closeModal()" class="bg-slate-100 text-slate-500 py-3 rounded-xl font-black uppercase text-xs">Cancel</button>
+                    </div>
+                </div>
+            `);
+        };
+        window.confirmDeleteOrder = async (fid) => { await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'deliveries', fid)); window.closeModal(); };
+
+        window.updateDeliveryStatus = async (fid, status) => {
+            const updates = { status };
+            if (status === 'Picked Up') updates.pickedUpAt = Date.now();
+            if (status === 'Delivered') updates.deliveredAt = Date.now();
+            await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'deliveries', fid), updates);
+            if (status === 'Delivered') window.closeModal(); else window.showTaskDetails(fid);
+        };
+
+        window.saveDriver = async (data) => {
+            const coll = collection(db, 'artifacts', appId, 'public', 'data', 'drivers');
+            if (state.editingDriverIndex !== null) {
+                await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'drivers', state.drivers[state.editingDriverIndex].firebaseId), data);
+                state.editingDriverIndex = null;
+            } else {
+                await addDoc(coll, data);
+            }
+            window.resetDriverForm();
+        };
+
+        window.removeDriver = async (fid) => { if(confirm('Delete partner?')) await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'drivers', fid)); };
+
+        // --- Render Functions ---
         function renderSidebar() {
             const nav = document.getElementById('navLinks');
-            nav.innerHTML = menuItems.map(item => `
-                <button onclick="navigateTo('${item.id}')" 
-                    class="w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-200 ${state.currentView === item.id ? 'bg-orange-600 text-white shadow-lg shadow-orange-100' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900'}">
-                    <i data-lucide="${item.icon}" class="w-5 h-5"></i>
-                    <span class="font-medium text-sm">${item.label}</span>
-                </button>
-            `).join('');
+            if(!nav) return;
+            nav.innerHTML = menuItems.map(item => {
+                const isActive = state.currentView === item.id;
+                const activeCls = isActive ? (item.special ? 'bg-slate-900 text-white shadow-xl ring-2 ring-orange-500/20' : 'bg-orange-600 text-white shadow-lg shadow-orange-100')
+                                          : (item.special ? 'bg-slate-100 text-slate-700 hover:bg-slate-200' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900');
+                return `<button onclick="window.navigateTo('${item.id}')" class="w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-200 ${activeCls}"><i data-lucide="${item.icon}" class="w-5 h-5"></i><span class="font-bold text-sm">${item.label}</span></button>`;
+            }).join('');
             lucide.createIcons();
         }
 
         function renderView() {
             const container = document.getElementById('viewContent');
+            if(!container) return;
+            container.innerHTML = '';
             switch (state.currentView) {
                 case 'customers': renderCustomerSection(container); break;
                 case 'assign': renderAssignSection(container); break;
-                case 'today': renderTodaySection(container); break;
                 case 'past': renderPastSection(container); break;
-                case 'analysis': renderAnalysisSection(container); break;
+                case 'top_customers': renderTopCustomersSection(container); break;
                 case 'settings': renderSettingsSection(container); break;
+                case 'today': renderTodaySection(container); break;
+                case 'my_performance': renderMyPerformanceSection(container); break;
             }
             lucide.createIcons();
         }
 
-        // --- View: Customers ---
         function renderCustomerSection(container) {
             container.innerHTML = `
-                <div class="grid grid-cols-1 xl:grid-cols-3 gap-6 animate-in fade-in slide-in-from-bottom-4">
+                <div class="grid grid-cols-1 xl:grid-cols-3 gap-6 animate-in fade-in slide-in-from-bottom-2">
                     <div class="xl:col-span-1">
                         <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm sticky top-24">
-                            <h3 class="text-lg font-bold text-slate-900 mb-6 flex items-center gap-2">
-                                <i data-lucide="${state.editingCustomer ? 'edit-2' : 'user-plus'}" class="${state.editingCustomer ? 'text-blue-600' : 'text-orange-600'}"></i>
-                                ${state.editingCustomer ? 'Edit Customer' : 'Add Customer'}
-                            </h3>
+                            <h3 class="text-lg font-bold text-slate-900 mb-6 flex items-center gap-2"><i data-lucide="${state.editingCustomer ? 'edit-2' : 'user-plus'}" class="${state.editingCustomer ? 'text-blue-600' : 'text-orange-600'}"></i>${state.editingCustomer ? 'Edit Customer' : 'Add Customer'}</h3>
                             <form id="customerForm" class="space-y-4">
                                 <div class="grid grid-cols-2 gap-4">
-                                    <div><label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Customer ID</label>
-                                    <input type="text" id="c_id" class="w-full px-4 py-2 rounded-xl border border-slate-200 text-sm outline-none focus:ring-2 focus:ring-orange-500/20" value="${state.editingCustomer ? state.editingCustomer.id : ''}"></div>
-                                    <div><label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Full Name</label>
-                                    <input type="text" id="c_name" class="w-full px-4 py-2 rounded-xl border border-slate-200 text-sm outline-none focus:ring-2 focus:ring-orange-500/20" value="${state.editingCustomer ? state.editingCustomer.name : ''}"></div>
+                                    <div><label class="text-[10px] font-bold text-slate-400 uppercase mb-1 block">ID</label><input type="text" id="c_id" class="w-full px-4 py-2 border border-slate-200 rounded-xl text-sm" value="${state.editingCustomer ? state.editingCustomer.id : ''}"></div>
+                                    <div><label class="text-[10px] font-bold text-slate-400 uppercase mb-1 block">Name</label><input type="text" id="c_name" class="w-full px-4 py-2 border border-slate-200 rounded-xl text-sm" value="${state.editingCustomer ? state.editingCustomer.name : ''}"></div>
                                 </div>
                                 <div class="grid grid-cols-2 gap-4">
-                                    <div><label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Primary No.</label>
-                                    <input type="text" id="c_p1" class="w-full px-4 py-2 rounded-xl border border-slate-200 text-sm outline-none" value="${state.editingCustomer ? state.editingCustomer.primaryPhone : ''}"></div>
-                                    <div><label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Alt No.</label>
-                                    <input type="text" id="c_p2" class="w-full px-4 py-2 rounded-xl border border-slate-200 text-sm outline-none" value="${state.editingCustomer ? state.editingCustomer.alternatePhone : ''}"></div>
+                                    <div><label class="text-[10px] font-bold text-slate-400 uppercase mb-1 block">Primary No.</label><input type="text" id="c_p1" class="w-full px-4 py-2 border border-slate-200 rounded-xl text-sm" value="${state.editingCustomer ? state.editingCustomer.primaryPhone : ''}"></div>
+                                    <div><label class="text-[10px] font-bold text-slate-400 uppercase mb-1 block">Alt No.</label><input type="text" id="c_p2" class="w-full px-4 py-2 border border-slate-200 rounded-xl text-sm" value="${state.editingCustomer ? state.editingCustomer.alternatePhone : ''}"></div>
                                 </div>
-                                <div><label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Address</label>
-                                <textarea id="c_addr" class="w-full px-4 py-2 rounded-xl border border-slate-200 text-sm outline-none" rows="2">${state.editingCustomer ? state.editingCustomer.address : ''}</textarea></div>
-                                <div><label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Address Link</label>
-                                <input type="text" id="c_link" class="w-full px-4 py-2 rounded-xl border border-slate-200 text-sm outline-none" placeholder="Maps URL" value="${state.editingCustomer ? state.editingCustomer.addressLink : ''}"></div>
+                                <div><label class="text-[10px] font-bold text-slate-400 uppercase mb-1 block">Address</label><textarea id="c_addr" class="w-full px-4 py-2 border border-slate-200 rounded-xl text-sm" rows="2">${state.editingCustomer ? state.editingCustomer.address : ''}</textarea></div>
+                                <div><label class="text-[10px] font-bold text-slate-400 uppercase mb-1 block">Maps URL</label><input type="text" id="c_link" class="w-full px-4 py-2 border border-slate-200 rounded-xl text-sm" value="${state.editingCustomer ? state.editingCustomer.addressLink : ''}"></div>
                                 <div class="flex gap-2">
-                                    <button type="submit" class="flex-1 ${state.editingCustomer ? 'bg-blue-600' : 'bg-orange-600'} text-white py-3 rounded-xl font-bold transition-all shadow-lg">${state.editingCustomer ? 'Update' : 'Save Entry'}</button>
-                                    ${state.editingCustomer ? `<button type="button" onclick="cancelCustomerEdit()" class="px-4 bg-slate-100 text-slate-500 rounded-xl font-bold">Cancel</button>` : ''}
+                                    <button type="submit" class="flex-1 ${state.editingCustomer ? 'bg-blue-600' : 'bg-orange-600'} text-white py-3 rounded-xl font-bold shadow-lg">${state.editingCustomer ? 'Update' : 'Save Entry'}</button>
+                                    ${state.editingCustomer ? `<button type="button" onclick="window.cancelCustomerEdit()" class="px-4 bg-slate-100 text-slate-500 rounded-xl font-bold">Cancel</button>` : ''}
                                 </div>
                             </form>
                         </div>
                     </div>
                     <div class="xl:col-span-2 space-y-4">
-                        <div class="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex items-center gap-3">
-                            <i data-lucide="search" class="text-slate-400 w-5 h-5"></i>
-                            <input type="text" id="customerSearch" oninput="renderCustomerList()" placeholder="Search by Name, ID or Number..." class="flex-1 bg-transparent border-none outline-none text-sm">
-                        </div>
+                        <div class="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex items-center gap-3"><i data-lucide="search" class="text-slate-400"></i><input type="text" id="customerSearch" oninput="window.renderCustomerList()" placeholder="Search Name, ID or Phone..." class="flex-1 bg-transparent border-none outline-none text-sm"></div>
                         <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-                            <div class="overflow-x-auto">
-                                <table class="w-full text-left">
-                                    <thead class="bg-slate-50 border-b border-slate-100">
-                                        <tr><th class="px-6 py-4 text-[10px] font-black text-slate-400 uppercase">Customer</th><th class="px-6 py-4 text-[10px] font-black text-slate-400 uppercase">Contact</th><th class="px-6 py-4 text-[10px] font-black text-slate-400 uppercase text-right">Actions</th></tr>
-                                    </thead>
-                                    <tbody id="customerTableBody" class="divide-y divide-slate-100"></tbody>
-                                </table>
-                            </div>
-                            <div id="showMoreContainer" class="p-4 border-t border-slate-100 text-center hidden">
-                                <button onclick="state.customerVisibleCount += 10; renderCustomerList()" class="text-xs font-black text-orange-600 uppercase tracking-widest hover:underline">Show More Records</button>
-                            </div>
+                            <table class="w-full text-left">
+                                <thead class="bg-slate-50 border-b border-slate-100"><tr><th class="px-6 py-4 text-[10px] font-black text-slate-400 uppercase">Customer</th><th class="px-6 py-4 text-[10px] font-black text-slate-400 uppercase">Contact</th><th class="px-6 py-4 text-[10px] font-black text-slate-400 uppercase text-right">Actions</th></tr></thead>
+                                <tbody id="customerTableBody" class="divide-y divide-slate-100"></tbody>
+                            </table>
+                            <div id="showMoreContainer" class="p-4 border-t border-slate-100 text-center hidden"><button onclick="state.customerVisibleCount += 10; window.renderCustomerList()" class="text-xs font-black text-orange-600 uppercase tracking-widest hover:underline">Show More</button></div>
                         </div>
                     </div>
                 </div>
             `;
-
-            document.getElementById('customerForm').onsubmit = (e) => {
-                e.preventDefault();
-                const data = {
-                    id: document.getElementById('c_id').value,
-                    name: document.getElementById('c_name').value,
-                    primaryPhone: document.getElementById('c_p1').value,
-                    alternatePhone: document.getElementById('c_p2').value,
-                    address: document.getElementById('c_addr').value,
-                    addressLink: document.getElementById('c_link').value
-                };
-                if (state.editingCustomer) {
-                    state.customers = state.customers.map(c => c.id === state.editingCustomer.id ? data : c);
-                    state.editingCustomer = null;
-                } else {
-                    state.customers.push(data);
-                }
-                renderCustomerSection(container);
-                lucide.createIcons();
-            };
-            renderCustomerList();
+            window.renderCustomerList();
         }
 
-        function cancelCustomerEdit() {
-            state.editingCustomer = null;
-            renderView();
-        }
-
-        function renderCustomerList() {
-            const query = document.getElementById('customerSearch').value.toLowerCase();
-            const filtered = state.customers.filter(c => 
-                c.name.toLowerCase().includes(query) || 
-                c.id.toLowerCase().includes(query) || 
-                c.primaryPhone.includes(query)
-            );
-
+        window.renderCustomerList = () => {
+            const queryVal = document.getElementById('customerSearch')?.value.toLowerCase() || '';
+            const filtered = state.customers.filter(c => c.name.toLowerCase().includes(queryVal) || c.id.toLowerCase().includes(queryVal) || (c.primaryPhone && c.primaryPhone.includes(queryVal)));
             const tbody = document.getElementById('customerTableBody');
-            const showMore = document.getElementById('showMoreContainer');
-            
-            const display = filtered.slice(0, state.customerVisibleCount);
-            tbody.innerHTML = display.map(c => `
-                <tr onclick="showCustomerDetails('${c.id}')" class="hover:bg-slate-50/50 cursor-pointer group">
-                    <td class="px-6 py-4"><p class="font-bold text-slate-900">${c.name || 'N/A'}</p><p class="text-[10px] text-slate-400 font-black uppercase">ID: ${c.id}</p></td>
+            if(!tbody) return;
+            tbody.innerHTML = filtered.slice(0, state.customerVisibleCount).map(c => `
+                <tr onclick="window.showCustomerDetails('${c.firebaseId}')" class="hover:bg-slate-50/50 cursor-pointer">
+                    <td class="px-6 py-4 font-bold text-slate-800">${c.name}<br><span class="text-[10px] text-slate-400 uppercase font-black">ID: ${c.id}</span></td>
                     <td class="px-6 py-4 text-xs text-slate-500">${c.primaryPhone}</td>
                     <td class="px-6 py-4 text-right" onclick="event.stopPropagation()">
-                        <div class="flex justify-end gap-1">
-                            <button onclick="editCustomer('${c.id}')" class="p-2 text-slate-400 hover:text-blue-600"><i data-lucide="edit-2" class="w-4 h-4"></i></button>
-                            <button onclick="deleteCustomer('${c.id}')" class="p-2 text-slate-400 hover:text-rose-600"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
-                        </div>
+                        <div class="flex justify-end gap-1"><button onclick="window.editCustomer('${c.firebaseId}')" class="p-2 text-slate-400 hover:text-blue-600"><i data-lucide="edit-2" class="w-4 h-4"></i></button><button onclick="window.deleteCustomer('${c.firebaseId}')" class="p-2 text-slate-400 hover:text-rose-600"><i data-lucide="trash-2" class="w-4 h-4"></i></button></div>
                     </td>
                 </tr>
             `).join('');
-
-            if (filtered.length > state.customerVisibleCount) showMore.classList.remove('hidden');
-            else showMore.classList.add('hidden');
+            document.getElementById('showMoreContainer').classList.toggle('hidden', filtered.length <= state.customerVisibleCount);
             lucide.createIcons();
-        }
+        };
 
-        function editCustomer(id) {
-            state.editingCustomer = state.customers.find(c => c.id === id);
-            renderView();
-        }
+        window.editCustomer = (fid) => { state.editingCustomer = state.customers.find(c => c.firebaseId === fid); renderView(); };
+        window.cancelCustomerEdit = () => { state.editingCustomer = null; renderView(); };
 
-        function deleteCustomer(id) {
-            if(confirm("Delete customer?")) {
-                state.customers = state.customers.filter(c => c.id !== id);
-                renderView();
-            }
-        }
-
-        function showCustomerDetails(id) {
-            const c = state.customers.find(x => x.id === id);
-            openModal(`
+        window.showCustomerDetails = (fid) => {
+            const c = state.customers.find(x => x.firebaseId === fid);
+            if(!c) return;
+            window.openModal(`
                 <div class="bg-slate-900 p-6 text-white flex justify-between items-center">
-                    <div><h3 class="text-xl font-black uppercase">Profile</h3><p class="text-slate-400 text-xs font-bold uppercase mt-0.5">#${c.id}</p></div>
-                    <button onclick="closeModal()" class="p-2 hover:bg-slate-800 rounded-full transition-colors"><i data-lucide="x"></i></button>
+                    <div><h3 class="text-xl font-black uppercase">Profile Card</h3><p class="text-slate-400 text-xs font-bold uppercase mt-0.5">#${c.id}</p></div>
+                    <button onclick="window.closeModal()" class="p-2 hover:bg-slate-800 rounded-full transition-colors"><i data-lucide="x"></i></button>
                 </div>
                 <div class="p-8 space-y-6">
-                    <div class="grid grid-cols-2 gap-6">
-                        <div class="space-y-1"><p class="text-[10px] font-bold text-slate-400 uppercase">Full Name</p><p class="font-bold text-slate-900">${c.name}</p></div>
-                        <div class="space-y-1"><p class="text-[10px] font-bold text-slate-400 uppercase">Primary Phone</p><p class="font-bold text-slate-900">${c.primaryPhone}</p></div>
-                        <div class="space-y-1"><p class="text-[10px] font-bold text-slate-400 uppercase">Alt Phone</p><p class="font-bold text-slate-900">${c.alternatePhone || 'None'}</p></div>
-                        <div class="space-y-1"><p class="text-[10px] font-bold text-slate-400 uppercase">Registered ID</p><p class="font-bold text-slate-900">${c.id}</p></div>
-                    </div>
-                    <div class="space-y-1 pt-4 border-t border-slate-100">
-                        <p class="text-[10px] font-bold text-slate-400 uppercase">Address</p>
-                        <p class="text-sm font-medium text-slate-600 leading-relaxed">${c.address}</p>
-                    </div>
-                    <div class="flex gap-3">
-                        <a href="tel:${c.primaryPhone}" class="flex-1 flex items-center justify-center gap-2 bg-blue-600 text-white py-3 rounded-xl font-bold uppercase text-xs">Call Customer</a>
-                        ${c.addressLink ? `<a href="${c.addressLink}" target="_blank" class="flex-1 flex items-center justify-center gap-2 bg-slate-900 text-white py-3 rounded-xl font-bold uppercase text-xs">Open Map</a>` : ''}
-                    </div>
+                    <div class="grid grid-cols-2 gap-6"><div><p class="text-[10px] font-bold text-slate-400 uppercase">Full Name</p><p class="font-bold text-slate-900">${c.name}</p></div><div><p class="text-[10px] font-bold text-slate-400 uppercase">Customer ID</p><p class="font-bold text-slate-900">${c.id}</p></div></div>
+                    <div class="space-y-1 pt-4 border-t border-slate-100"><p class="text-[10px] font-bold text-slate-400 uppercase">Contact</p><p class="text-sm font-bold text-slate-700">${c.primaryPhone} ${c.alternatePhone ? `| ${c.alternatePhone}` : ''}</p></div>
+                    <div class="space-y-1"><p class="text-[10px] font-bold text-slate-400 uppercase">Address</p><p class="text-sm font-medium text-slate-600 leading-relaxed">${c.address}</p></div>
                 </div>
             `);
-        }
+        };
 
-        // --- View: Assign ---
         function renderAssignSection(container) {
-            const pending = state.deliveries.filter(d => d.status === 'Pending');
+            const pending = state.deliveries.filter(d => d.status === 'Pending' || d.status === 'Picked Up');
             container.innerHTML = `
-                <div class="space-y-6 animate-in fade-in slide-in-from-bottom-4">
-                    <div class="flex justify-end">
-                        <button onclick="openAssignModal()" class="bg-orange-600 text-white w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg hover:bg-orange-700 transition-all hover:scale-105">
-                            <i data-lucide="plus" class="w-8 h-8"></i>
-                        </button>
-                    </div>
+                <div class="space-y-6 animate-in fade-in">
+                    <div class="flex justify-end"><button onclick="window.openAssignModal()" class="bg-orange-600 text-white w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg hover:scale-105 transition-transform"><i data-lucide="plus"></i></button></div>
                     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        ${pending.length === 0 ? `
-                            <div class="col-span-full py-20 text-center border-2 border-dashed border-slate-200 rounded-3xl text-slate-400">
-                                No pending assignments. Click the plus icon to create one.
-                            </div>
-                        ` : pending.map(d => `
-                            <div onclick="showOrderAssignment('${d.id}')" class="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm border-t-4 border-t-orange-500 cursor-pointer hover:shadow-md transition-all">
-                                <div class="flex justify-between items-start mb-4">
-                                    <span class="px-2 py-1 rounded-md text-[10px] font-bold uppercase ${d.priority === 'High' ? 'bg-rose-50 text-rose-600' : 'bg-slate-50 text-slate-500'}">${d.priority} Priority</span>
-                                    <span class="text-xs font-medium text-slate-400">${d.time}</span>
+                        ${pending.length === 0 ? `<div class="col-span-full py-20 text-center text-slate-400 border-2 border-dashed rounded-3xl">No pending assignments.</div>` : 
+                        pending.map(d => `
+                            <div onclick="window.showOrderAssignment('${d.firebaseId}')" class="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm border-t-4 border-t-orange-500 relative cursor-pointer">
+                                <button onclick="event.stopPropagation(); window.deleteOrder('${d.firebaseId}')" class="absolute top-4 right-4 p-1 bg-slate-50 text-slate-400 hover:text-rose-600 rounded"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">#${d.id} • ${d.time}</p>
+                                <h4 class="text-slate-900 font-black text-lg mt-1">${d.customerName}</h4>
+                                <div class="flex flex-wrap gap-2 mt-2">
+                                   <span class="bg-slate-100 px-2 py-0.5 rounded text-[10px] font-bold text-slate-500 uppercase">Driver: ${d.driver}</span>
+                                   <span class="bg-orange-50 px-2 py-0.5 rounded text-[10px] font-bold text-orange-600 uppercase">₹${d.amount} • ${d.paymentMode}</span>
                                 </div>
-                                <h4 class="text-slate-900 font-black text-lg">${d.customerName}</h4>
-                                <div class="flex flex-wrap items-center gap-2 mt-2">
-                                   <div class="bg-slate-50 px-2 py-1 rounded-lg text-[10px] font-bold text-slate-500 uppercase">Driver: ${d.driver}</div>
-                                   <div class="bg-orange-50 px-2 py-1 rounded-lg text-[10px] font-bold text-orange-600 uppercase">₹${d.amount} • ${d.paymentMode}</div>
-                                </div>
+                                <div class="mt-3 text-[10px] font-black uppercase text-slate-400 flex items-center gap-1"><i data-lucide="clock" class="w-3 h-3"></i> ${d.status}</div>
                             </div>
                         `).join('')}
                     </div>
                 </div>
             `;
+            lucide.createIcons();
         }
 
-        function openAssignModal() {
+        window.openAssignModal = () => {
             const today = new Date().toISOString().split('T')[0];
-            openModal(`
+            window.openModal(`
                 <div class="bg-slate-900 p-6 text-white rounded-t-3xl flex justify-between items-center">
                     <div><h3 class="text-xl font-black uppercase tracking-tight">Assign Delivery</h3><p class="text-slate-400 text-xs font-bold mt-1 uppercase">Operations Panel</p></div>
-                    <button onclick="closeModal()" class="p-2 hover:bg-slate-800 rounded-full transition-colors"><i data-lucide="x"></i></button>
+                    <button onclick="window.closeModal()" class="p-2 hover:bg-slate-800 rounded-full transition-colors"><i data-lucide="x"></i></button>
                 </div>
                 <div class="p-8 space-y-6 max-h-[70vh] overflow-y-auto custom-scrollbar">
                     <div><label class="block text-xs font-black text-slate-400 uppercase mb-2">Delivery Date</label><input type="date" id="new_date" class="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm outline-none" value="${today}"></div>
-                    
-                    <div class="relative"><label class="block text-xs font-black text-slate-400 uppercase mb-2">Search Customer</label>
+                    <div class="relative"><label class="block text-xs font-black text-slate-400 uppercase mb-2">Select Customer</label>
                         <div class="relative"><i data-lucide="search" class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4"></i>
-                        <input type="text" id="assignSearch" oninput="searchCustomerForAssign()" placeholder="ID or Name..." class="w-full pl-11 pr-10 py-3 rounded-xl border border-slate-200 text-sm outline-none focus:ring-2 focus:ring-orange-500/20"></div>
+                        <input type="text" id="assignSearch" oninput="window.searchCustomerForAssign()" placeholder="ID or Name..." class="w-full pl-11 pr-10 py-3 rounded-xl border border-slate-200 text-sm outline-none"></div>
                         <div id="assignSearchResults" class="mt-2 space-y-1"></div>
                         <div id="selectedCustomerDisplay" class="mt-2 p-3 bg-orange-50 text-orange-600 rounded-xl text-xs font-black uppercase hidden"></div>
                         <input type="hidden" id="new_cid"><input type="hidden" id="new_cname">
                     </div>
-
                     <div class="grid grid-cols-2 gap-4">
-                        <div><label class="block text-xs font-black text-slate-400 uppercase mb-2">Pay Mode</label><select id="new_mode" class="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm bg-slate-50 outline-none"><option value="Cash">Cash</option><option value="Online">Online</option><option value="Prepaid">Prepaid</option></select></div>
+                        <div><label class="block text-xs font-black text-slate-400 uppercase mb-2">Pay Mode</label><select id="new_mode" onchange="window.handleAssignPayModeChange(this.value)" class="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm bg-slate-50 outline-none focus:ring-2 focus:ring-orange-500/20"><option value="COD">COD</option><option value="Prepaid">Prepaid</option></select></div>
                         <div><label class="block text-xs font-black text-slate-400 uppercase mb-2">Amount</label><input type="number" id="new_amt" placeholder="0.00" class="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm outline-none"></div>
                     </div>
-
-                    <div class="grid grid-cols-2 gap-4">
-                        <div><label class="block text-xs font-black text-slate-400 uppercase mb-2">Delivery Boy</label><select id="new_driver" class="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm bg-slate-50 outline-none">${state.drivers.map(d => `<option value="${d.name}">${d.name}</option>`).join('')}</select></div>
-                        <div><label class="block text-xs font-black text-slate-400 uppercase mb-2">Priority</label><select id="new_prio" class="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm bg-slate-50 outline-none"><option value="Low">Low</option><option value="Medium" selected>Medium</option><option value="High">High</option></select></div>
+                    <div class="w-full">
+                        <label class="block text-xs font-black text-slate-400 uppercase mb-2">Partner</label>
+                        <select id="new_driver" class="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm bg-slate-50 outline-none focus:ring-2 focus:ring-orange-500/20">
+                            ${state.drivers.map(d => `<option value="${d.name}">${d.name}</option>`).join('')}
+                        </select>
                     </div>
-
-                    <button onclick="confirmAssignment()" class="w-full bg-slate-900 text-white py-4 rounded-2xl font-black uppercase tracking-widest hover:bg-orange-600 transition-colors shadow-lg mt-4">Confirm Assignment</button>
+                    <button onclick="window.confirmAssignment()" class="w-full bg-orange-600 text-white py-4 rounded-2xl font-black uppercase tracking-widest hover:bg-orange-700 transition-colors shadow-lg mt-4">Confirm Assignment</button>
                 </div>
             `);
-        }
+        };
 
-        function searchCustomerForAssign() {
-            const query = document.getElementById('assignSearch').value.toLowerCase();
-            const results = document.getElementById('assignSearchResults');
-            if (query.length < 1) { results.innerHTML = ''; return; }
-
-            const filtered = state.customers.filter(c => c.name.toLowerCase().includes(query) || c.id.toLowerCase().includes(query));
-            results.innerHTML = filtered.map(c => `
-                <button onclick="selectCustomerForAssign('${c.id}', '${c.name}')" class="w-full text-left p-3 border border-slate-100 rounded-xl hover:bg-slate-50 flex justify-between items-center transition-colors">
-                    <span class="font-bold text-sm">${c.name}</span>
-                    <span class="text-[10px] font-black text-slate-400">${c.id}</span>
-                </button>
-            `).join('');
-        }
-
-        function selectCustomerForAssign(id, name) {
-            document.getElementById('new_cid').value = id;
-            document.getElementById('new_cname').value = name;
-            document.getElementById('assignSearch').value = '';
-            document.getElementById('assignSearchResults').innerHTML = '';
-            const display = document.getElementById('selectedCustomerDisplay');
-            display.innerText = "Selected: " + name;
-            display.classList.remove('hidden');
-        }
-
-        function confirmAssignment() {
-            const cid = document.getElementById('new_cid').value;
-            if (!cid) { alert("Select a customer"); return; }
-            const o = {
-                id: "ORD-" + Math.floor(1000 + Math.random() * 9000),
-                customerId: cid,
-                customerName: document.getElementById('new_cname').value,
-                driver: document.getElementById('new_driver').value,
-                status: 'Pending',
-                priority: document.getElementById('new_prio').value,
-                amount: document.getElementById('new_amt').value || "0",
-                paymentMode: document.getElementById('new_mode').value,
-                date: document.getElementById('new_date').value,
-                time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                assignedAt: Date.now()
-            };
-            state.deliveries.push(o);
-            closeModal();
-            renderView();
-        }
-
-        function showOrderAssignment(id) {
-            const o = state.deliveries.find(x => x.id === id);
+        window.showOrderAssignment = (fid) => {
+            const o = state.deliveries.find(x => x.firebaseId === fid);
             const c = state.customers.find(x => x.id === o.customerId);
-            openModal(`
-                <div class="bg-slate-900 p-6 text-white flex justify-between items-center">
-                    <div><h3 class="text-xl font-black uppercase">Assignment Details</h3><p class="text-slate-400 text-xs font-bold uppercase mt-0.5">${o.id}</p></div>
-                    <button onclick="closeModal()" class="p-2 hover:bg-slate-800 rounded-full"><i data-lucide="x"></i></button>
+            const d = state.drivers.find(x => x.name === o.driver);
+            if(!o || !c) return;
+            window.openModal(`
+                <div class="bg-slate-900 p-6 text-white flex justify-between items-center rounded-t-3xl">
+                    <div><h3 class="text-xl font-black uppercase tracking-tight text-white">Hub Detail</h3><p class="text-slate-400 text-xs font-bold uppercase mt-0.5">${o.id}</p></div>
+                    <button onclick="window.closeModal()" class="p-2 hover:bg-slate-800 rounded-full"><i data-lucide="x"></i></button>
                 </div>
-                <div class="p-8 space-y-6">
+                <div class="p-8 space-y-6 max-h-[80vh] overflow-y-auto custom-scrollbar">
                     <div class="grid grid-cols-2 gap-4">
-                        <div><p class="text-[10px] font-bold text-slate-400 uppercase">Customer</p><p class="text-sm font-bold text-slate-900">${o.customerName}</p></div>
-                        <div><p class="text-[10px] font-bold text-slate-400 uppercase">Assigned Driver</p><p class="text-sm font-bold text-slate-900">${o.driver}</p></div>
+                        <div class="space-y-1"><p class="text-[10px] font-bold text-slate-400 uppercase">Customer</p><p class="font-bold text-slate-900">${o.customerName}</p></div>
+                        <div class="space-y-1"><p class="text-[10px] font-bold text-slate-400 uppercase">ID</p><p class="font-bold text-slate-900">${o.customerId}</p></div>
                     </div>
-                    <div class="bg-orange-50 p-4 rounded-2xl border border-orange-100 flex justify-between">
-                        <div><p class="text-[10px] font-bold text-orange-600 uppercase">To Collect</p><p class="text-xl font-black text-slate-900">₹${o.amount}</p></div>
-                        <div class="text-right"><p class="text-[10px] font-bold text-orange-600 uppercase">Payment Mode</p><p class="text-sm font-bold text-slate-700">${o.paymentMode}</p></div>
+                    <div class="space-y-1"><p class="text-[10px] font-bold text-slate-400 uppercase">Address</p><p class="text-sm font-medium text-slate-700 leading-relaxed">${c.address}</p></div>
+                    <div class="bg-orange-50 p-4 rounded-xl border border-orange-100 flex justify-between items-center">
+                        <div><p class="text-[10px] font-bold text-orange-600 uppercase">Collect</p><p class="text-xl font-black text-slate-900">₹${o.amount}</p></div>
+                        <p class="text-[10px] font-black uppercase bg-white border border-orange-200 px-2 py-1 rounded text-orange-600">${o.paymentMode}</p>
                     </div>
-                    <button onclick="notifyViaWA('${o.id}')" class="w-full bg-emerald-600 text-white py-4 rounded-2xl font-black uppercase hover:bg-emerald-700 flex items-center justify-center gap-3">
-                        <i data-lucide="message-circle"></i> Notify Customer
-                    </button>
+                    <div class="grid grid-cols-2 gap-3 pt-2">
+                        <a href="tel:${c.primaryPhone}" class="flex items-center justify-center gap-2 p-3 rounded-xl bg-blue-600 text-white font-black uppercase text-[10px] shadow-lg"><i data-lucide="phone" class="w-4 h-4"></i> Call</a>
+                        <button onclick="window.notifyViaWA('${fid}')" class="flex items-center justify-center gap-2 p-3 rounded-xl bg-emerald-600 text-white font-black uppercase text-[10px] shadow-lg"><i data-lucide="message-circle" class="w-4 h-4"></i> WhatsApp</button>
+                    </div>
+                    <button onclick="window.closeModal()" class="w-full bg-slate-100 text-slate-500 py-3 rounded-xl font-bold uppercase text-xs">Close</button>
                 </div>
             `);
-        }
+        };
 
-        function notifyViaWA(id) {
-            const o = state.deliveries.find(x => x.id === id);
-            const c = state.customers.find(x => x.id === o.customerId);
-            const msg = `Hello ${o.customerName}, we have assigned your delivery partner ${o.driver}. Order #${o.id} will arrive shortly. Amount: ₹${o.amount}.`;
-            window.open(`https://wa.me/${c.primaryPhone}?text=${encodeURIComponent(msg)}`, '_blank');
-        }
-
-        // --- View: Today Delivery ---
-        function renderTodaySection(container) {
-            const pending = state.deliveries.filter(d => d.status === 'Pending');
+        function renderPastSection(container) {
             container.innerHTML = `
-                <div class="space-y-6 animate-in fade-in slide-in-from-bottom-4">
+                <div class="space-y-6 animate-in fade-in">
+                    <div class="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex flex-wrap gap-4 items-end">
+                        <div class="flex-1 min-w-[140px]"><label class="text-[10px] font-black text-slate-400 uppercase block mb-1">From</label><input type="date" id="p_from" onchange="window.renderPastOrdersList()" class="w-full text-xs border border-slate-200 rounded-lg p-2"></div>
+                        <div class="flex-1 min-w-[140px]"><label class="text-[10px] font-black text-slate-400 uppercase block mb-1">To</label><input type="date" id="p_to" onchange="window.renderPastOrdersList()" class="w-full text-xs border border-slate-200 rounded-lg p-2"></div>
+                        <div class="flex-1 min-w-[140px]"><label class="text-[10px] font-black text-slate-400 uppercase block mb-1">Driver</label><select id="p_driver" onchange="window.renderPastOrdersList()" class="w-full text-xs border border-slate-200 rounded-lg p-2"><option value="All">All Drivers</option>${state.drivers.map(d => `<option value="${d.name}">${d.name}</option>`).join('')}</select></div>
+                        <button onclick="window.resetPastFilters()" class="p-2.5 bg-slate-50 text-slate-400 rounded-lg hover:text-orange-600 transition-colors"><i data-lucide="x"></i></button>
+                    </div>
+                    <div class="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden"><table class="w-full text-left"><thead class="bg-slate-50 border-b border-slate-100"><tr><th class="px-6 py-4 text-[10px] font-black uppercase text-slate-400">Order</th><th class="px-6 py-4 text-center text-[10px] font-black uppercase text-slate-400">Driver</th><th class="px-6 py-4 text-right text-[10px] font-black uppercase text-slate-400">Amount</th></tr></thead><tbody id="pastOrdersBody" class="divide-y divide-slate-100"></tbody></table></div>
+                </div>
+            `;
+            window.renderPastOrdersList();
+        }
+
+        window.renderPastOrdersList = () => {
+            const f = document.getElementById('p_from')?.value || '';
+            const t = document.getElementById('p_to')?.value || '';
+            const drv = document.getElementById('p_driver')?.value || 'All';
+            const filtered = state.deliveries.filter(d => d.status === 'Delivered' && (drv === 'All' || d.driver === drv) && ((f && t) ? (d.date >= f && d.date <= t) : true));
+            const body = document.getElementById('pastOrdersBody');
+            if(body) body.innerHTML = filtered.length === 0 ? '<tr><td colspan="3" class="p-12 text-center text-slate-300 italic font-medium">No records matching filters.</td></tr>' : filtered.map(o => `<tr onclick="window.showPastOrderDetail('${o.firebaseId}')" class="hover:bg-slate-50/50 cursor-pointer group transition-colors"><td class="px-6 py-4 font-black text-xs text-slate-700">${o.id}<br><span class="text-[10px] text-slate-400 font-bold">${o.date}</span></td><td class="px-6 py-4 text-center"><span class="px-3 py-1 bg-slate-100 rounded-full text-[10px] font-black uppercase">${o.driver}</span></td><td class="px-6 py-4 text-right font-black text-emerald-600">₹${o.amount}</td></tr>`).join('');
+            lucide.createIcons();
+        };
+
+        function renderTopCustomersSection(container) {
+            container.innerHTML = `
+                <div class="space-y-6 animate-in fade-in slide-in-from-bottom-2">
+                    <div class="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex flex-wrap gap-4 items-end">
+                        <div class="flex-1 min-w-[140px]"><label class="text-[10px] font-black text-slate-400 uppercase block mb-1">From</label><input type="date" id="top_from" onchange="window.updateTopCustomers()" class="w-full text-xs border border-slate-200 rounded-lg p-2"></div>
+                        <div class="flex-1 min-w-[140px]"><label class="text-[10px] font-black text-slate-400 uppercase block mb-1">To</label><input type="date" id="top_to" onchange="window.updateTopCustomers()" class="w-full text-xs border border-slate-200 rounded-lg p-2"></div>
+                        <div class="flex-1 min-w-[140px]"><label class="text-[10px] font-black text-slate-400 uppercase block mb-1">ID Search</label><input type="text" id="top_cid" oninput="window.updateTopCustomers()" placeholder="Customer ID" class="w-full text-xs border border-slate-200 rounded-lg p-2"></div>
+                        <button onclick="window.resetTopFilters()" class="p-2.5 bg-slate-50 text-slate-400 rounded-lg"><i data-lucide="refresh-cw" class="w-4 h-4"></i></button>
+                    </div>
+                    <div id="topCustomersDisplay" class="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden"></div>
+                </div>
+            `;
+            window.updateTopCustomers();
+        }
+
+        function renderTodaySection(container) {
+            if (!state.activeTodayDriver && state.drivers.length > 0) state.activeTodayDriver = state.drivers[0].name;
+            const activeTasks = state.deliveries.filter(d => (d.status === 'Pending' || d.status === 'Picked Up') && d.driver === state.activeTodayDriver);
+            container.innerHTML = `
+                <div class="space-y-6 animate-in fade-in">
+                    <div class="flex flex-wrap gap-2 p-1 bg-slate-200/50 rounded-2xl w-fit">
+                        ${state.drivers.map(d => `<button onclick="window.toggleTodayDriver('${d.name}')" class="px-6 py-2 rounded-xl text-xs font-black uppercase transition-all ${state.activeTodayDriver === d.name ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:bg-slate-100'}">${d.name}</button>`).join('')}
+                    </div>
                     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        ${pending.length === 0 ? `<div class="col-span-full py-20 text-center text-slate-300 italic bg-white border border-slate-100 rounded-3xl">No active tasks.</div>` : 
-                        pending.map(d => `
-                            <div class="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
-                                <div class="flex justify-between items-start mb-3"><span class="text-[10px] font-bold text-slate-400">#${d.id} • ${d.time}</span></div>
-                                <h4 class="font-black text-slate-900 text-lg mb-4">${d.customerName}</h4>
-                                <div class="flex gap-2">
-                                    <button onclick="showTaskDetails('${d.id}')" class="flex-1 bg-slate-100 text-slate-700 py-2 rounded-lg text-xs font-bold">Details</button>
-                                    <button onclick="markDelivered('${d.id}')" class="flex-1 bg-emerald-600 text-white py-2 rounded-lg text-xs font-bold">Delivered</button>
-                                </div>
+                        ${activeTasks.length === 0 ? `<div class="col-span-full py-20 text-center text-slate-400 italic bg-white border border-slate-100 rounded-3xl font-bold">No tasks assigned to ${state.activeTodayDriver || 'anyone'}.</div>` : 
+                        activeTasks.map(d => `
+                            <div class="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm hover:border-orange-200 transition-all">
+                                <div class="flex justify-between items-start mb-3"><span class="text-[10px] font-bold text-slate-400 uppercase">#${d.id} • ${d.time}</span><span class="px-2 py-0.5 bg-orange-100 text-orange-600 text-[10px] font-black uppercase rounded">${d.status}</span></div>
+                                <h4 class="font-black text-slate-900 text-lg mb-1">${d.customerName}</h4>
+                                <p class="text-[10px] font-black text-slate-400 uppercase mb-4 italic tracking-widest">Assignee: ${d.driver}</p>
+                                <button onclick="window.showTaskDetails('${d.firebaseId}')" class="w-full bg-slate-900 text-white py-3 rounded-xl text-xs font-black shadow-lg">Open Task Hub</button>
                             </div>
                         `).join('')}
                     </div>
                 </div>
             `;
-        }
-
-        function showTaskDetails(id) {
-            const o = state.deliveries.find(x => x.id === id);
-            const c = state.customers.find(x => x.id === o.customerId);
-            openModal(`
-                <div class="bg-orange-600 p-6 text-white flex justify-between items-center">
-                    <div><h3 class="text-xl font-black uppercase">Task Hub</h3><p class="text-xs font-bold uppercase mt-0.5">${o.id}</p></div>
-                    <button onclick="closeModal()" class="p-2 hover:bg-orange-500 rounded-full"><i data-lucide="x"></i></button>
-                </div>
-                <div class="p-6 space-y-5">
-                    <div class="grid grid-cols-2 gap-4">
-                        <div><p class="text-[10px] font-bold text-slate-400 uppercase">Customer</p><p class="text-sm font-bold text-slate-900">${o.customerName}</p></div>
-                        <div><p class="text-[10px] font-bold text-slate-400 uppercase">Collect</p><p class="text-lg font-black text-orange-600">₹${o.amount}</p></div>
-                    </div>
-                    <div class="bg-slate-50 p-4 rounded-xl flex justify-between items-center border border-slate-100">
-                        <span class="text-[10px] font-black uppercase text-slate-400">Mode: ${o.paymentMode}</span>
-                        <a href="tel:${c.primaryPhone}" class="text-blue-600 font-bold text-xs uppercase flex items-center gap-1"><i data-lucide="phone" class="w-3 h-3"></i> Call Now</a>
-                    </div>
-                    <div><p class="text-[10px] font-bold text-slate-400 uppercase">Address</p><p class="text-sm font-medium">${c.address}</p></div>
-                    <div class="grid grid-cols-2 gap-3 pt-4 border-t border-slate-100">
-                        <a href="https://wa.me/${c.primaryPhone}" target="_blank" class="flex flex-col items-center gap-1 p-3 rounded-2xl bg-emerald-50 text-emerald-600 font-black uppercase text-[10px]"><i data-lucide="message-circle"></i> WhatsApp</a>
-                        <a href="${c.addressLink || `https://maps.google.com?q=${c.address}`}" target="_blank" class="flex flex-col items-center gap-1 p-3 rounded-2xl bg-orange-50 text-orange-600 font-black uppercase text-[10px]"><i data-lucide="navigation"></i> Open Map</a>
-                    </div>
-                </div>
-            `);
-        }
-
-        function markDelivered(id) {
-            const o = state.deliveries.find(x => x.id === id);
-            o.status = 'Delivered';
-            o.deliveredAt = Date.now();
-            renderView();
-        }
-
-        // --- View: Past Orders ---
-        function renderPastSection(container) {
-            const delivered = state.deliveries.filter(d => d.status === 'Delivered');
-            container.innerHTML = `
-                <div class="space-y-6 animate-in fade-in slide-in-from-bottom-4">
-                    <div class="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex flex-wrap gap-4 items-end">
-                        <div class="flex-1 min-w-[140px]"><label class="block text-[10px] font-black text-slate-400 uppercase mb-1">From</label><input type="date" id="p_from" class="w-full text-xs border border-slate-200 rounded-lg p-2 outline-none"></div>
-                        <div class="flex-1 min-w-[140px]"><label class="block text-[10px] font-black text-slate-400 uppercase mb-1">To</label><input type="date" id="p_to" class="w-full text-xs border border-slate-200 rounded-lg p-2 outline-none"></div>
-                        <div class="w-24"><label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Year</label><select id="p_year" class="w-full text-xs border border-slate-200 rounded-lg p-2 outline-none"><option value="All">All</option><option value="2024" selected>2024</option><option value="2025">2025</option></select></div>
-                        <button onclick="renderPastOrdersList()" class="bg-slate-900 text-white p-2 px-6 rounded-lg font-bold text-xs">Filter</button>
-                    </div>
-                    <div class="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
-                        <table class="w-full text-left">
-                            <thead class="bg-slate-50 border-b border-slate-100">
-                                <tr><th class="px-6 py-4 text-[10px] font-black uppercase">Order</th><th class="px-6 py-4 text-[10px] font-black uppercase">Customer</th><th class="px-6 py-4 text-[10px] font-black uppercase">Driver</th><th class="px-6 py-4 text-[10px] font-black uppercase text-right">Amount</th></tr>
-                            </thead>
-                            <tbody id="pastOrdersBody" class="divide-y divide-slate-100"></tbody>
-                        </table>
-                    </div>
-                </div>
-            `;
-            renderPastOrdersList();
-        }
-
-        function renderPastOrdersList() {
-            const from = document.getElementById('p_from').value;
-            const to = document.getElementById('p_to').value;
-            const year = document.getElementById('p_year').value;
-
-            const filtered = state.deliveries.filter(d => {
-                if (d.status !== 'Delivered') return false;
-                if (year !== 'All' && new Date(d.date).getFullYear() !== Number(year)) return false;
-                if (from && d.date < from) return false;
-                if (to && d.date > to) return false;
-                return true;
-            });
-
-            document.getElementById('pastOrdersBody').innerHTML = filtered.map(o => `
-                <tr class="hover:bg-slate-50 transition-colors">
-                    <td class="px-6 py-4"><p class="font-black text-xs">${o.id}</p><p class="text-[10px] text-slate-400">${o.date}</p></td>
-                    <td class="px-6 py-4"><p class="font-bold text-sm text-slate-800">${o.customerName}</p></td>
-                    <td class="px-6 py-4"><span class="px-3 py-1 bg-slate-100 text-slate-600 rounded-full text-[10px] font-bold uppercase">${o.driver}</span></td>
-                    <td class="px-6 py-4 text-right font-black text-emerald-600">₹${o.amount}</td>
-                </tr>
-            `).join('');
             lucide.createIcons();
         }
 
-        // --- View: Analysis ---
-        function renderAnalysisSection(container) {
+        function renderMyPerformanceSection(container) {
             container.innerHTML = `
-                <div class="space-y-6 animate-in fade-in slide-in-from-bottom-4">
-                    <div id="analysisSubTabs" class="flex bg-white p-1 rounded-xl border border-slate-200 w-full max-w-lg shadow-sm">
-                        <button onclick="renderSubAnalysis('general')" id="tab_general" class="flex-1 py-2 rounded-lg text-xs font-bold bg-orange-600 text-white">General</button>
-                        <button onclick="renderSubAnalysis('financial')" id="tab_financial" class="flex-1 py-2 rounded-lg text-xs font-bold text-slate-500">Financial</button>
-                        <button onclick="renderSubAnalysis('top')" id="tab_top" class="flex-1 py-2 rounded-lg text-xs font-bold text-slate-500">Top Customers</button>
+                <div class="space-y-6 animate-in fade-in">
+                    <div class="bg-slate-900 p-6 rounded-3xl shadow-xl flex flex-wrap gap-4 items-end border border-slate-800">
+                        <div class="flex-1 min-w-[180px]"><label class="text-[10px] font-black text-slate-500 uppercase block mb-2">Personnel</label><select id="perf_driver" onchange="window.updateMyPerformance()" class="w-full text-sm bg-slate-800 text-white rounded-xl p-3 outline-none ring-1 ring-slate-700"><option value="All">All Partners</option>${state.drivers.map(d => `<option value="${d.name}">${d.name}</option>`).join('')}</select></div>
+                        <div class="flex-1 min-w-[140px]"><label class="text-[10px] font-black text-slate-500 uppercase block mb-2">From</label><input type="date" id="perf_from" onchange="window.updateMyPerformance()" class="w-full text-sm bg-slate-800 text-white rounded-xl p-3 outline-none ring-1 ring-slate-700"></div>
+                        <div class="flex-1 min-w-[140px]"><label class="text-[10px] font-black text-slate-500 uppercase block mb-2">To</label><input type="date" id="perf_to" onchange="window.updateMyPerformance()" class="w-full text-sm bg-slate-800 text-white rounded-xl p-3 outline-none ring-1 ring-slate-700"></div>
                     </div>
-                    <div id="analysisTarget"></div>
+                    <div id="perfMetrics" class="grid grid-cols-1 sm:grid-cols-2 gap-6"></div>
+                    <div class="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden"><div class="p-6 border-b border-slate-100 font-black uppercase text-xs text-slate-400">Personal Log</div><div class="overflow-x-auto"><table class="w-full text-left"><thead class="bg-slate-50 border-b border-slate-100"><tr><th class="px-6 py-4 text-[10px] font-black uppercase tracking-widest">Order</th><th class="px-6 py-4 text-center text-[10px] font-black uppercase tracking-widest">Picked Up</th><th class="px-6 py-4 text-center text-[10px] font-black uppercase tracking-widest">Delivered</th><th class="px-6 py-4 text-right text-[10px] font-black uppercase tracking-widest">Duration</th></tr></thead><tbody id="perfLogBody" class="divide-y divide-slate-100"></tbody></table></div></div>
                 </div>
             `;
-            renderSubAnalysis('general');
+            window.updateMyPerformance();
         }
 
-        function renderSubAnalysis(tab) {
-            const target = document.getElementById('analysisTarget');
-            const btns = document.querySelectorAll('#analysisSubTabs button');
-            btns.forEach(b => { b.classList.remove('bg-orange-600', 'text-white'); b.classList.add('text-slate-500'); });
-            document.getElementById('tab_'+tab).classList.add('bg-orange-600', 'text-white');
-            document.getElementById('tab_'+tab).classList.remove('text-slate-500');
-
-            const delivered = state.deliveries.filter(d => d.status === 'Delivered');
-            const online = delivered.filter(d => d.paymentMode === 'Online').reduce((a,c) => a + Number(c.amount), 0);
-            const cash = delivered.filter(d => d.paymentMode === 'Cash').reduce((a,c) => a + Number(c.amount), 0);
-            const prepaid = delivered.filter(d => d.paymentMode === 'Prepaid').reduce((a,c) => a + Number(c.amount), 0);
-            
-            let totalTripMs = delivered.filter(d => d.deliveredAt && d.assignedAt).reduce((a,c) => a + (c.deliveredAt - c.assignedAt), 0);
-            let avgTrip = delivered.length > 0 ? totalTripMs / delivered.length : 0;
-
-            if (tab === 'general') {
-                target.innerHTML = `
-                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                        <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm"><p class="text-[10px] font-black text-slate-400 uppercase">Total</p><h3 class="text-2xl font-black">${state.deliveries.length}</h3></div>
-                        <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm"><p class="text-[10px] font-black text-slate-400 uppercase">Delivered</p><h3 class="text-2xl font-black text-emerald-600">${delivered.length}</h3></div>
-                        <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm"><p class="text-[10px] font-black text-slate-400 uppercase">Avg Trip</p><h3 class="text-2xl font-black text-blue-600">${formatDuration(avgTrip)}</h3></div>
-                    </div>
-                `;
-            } else if (tab === 'financial') {
-                target.innerHTML = `
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm"><p class="text-[10px] font-black text-slate-400 uppercase">Online</p><h3 class="text-2xl font-black">₹${online}</h3></div>
-                        <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm"><p class="text-[10px] font-black text-slate-400 uppercase">Cash</p><h3 class="text-2xl font-black">₹${cash}</h3></div>
-                        <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm"><p class="text-[10px] font-black text-slate-400 uppercase">Prepaid</p><h3 class="text-2xl font-black">₹${prepaid}</h3></div>
-                    </div>
-                `;
-            } else {
-                const map = {};
-                state.deliveries.forEach(d => {
-                    if(!map[d.customerId]) map[d.customerId] = { name: d.customerName, count: 0, val: 0 };
-                    map[d.customerId].count++;
-                    map[d.customerId].val += Number(d.amount);
-                });
-                const top = Object.values(map).sort((a,b) => b.count - a.count).slice(0, 5);
-                target.innerHTML = `
-                    <div class="bg-white rounded-2xl border border-slate-100 overflow-hidden">
-                        <table class="w-full text-left">
-                            <tbody class="divide-y divide-slate-100">
-                                ${top.map((c, i) => `
-                                    <tr class="p-4">
-                                        <td class="p-4 font-black text-slate-400">#${i+1}</td>
-                                        <td class="p-4 font-bold">${c.name}</td>
-                                        <td class="p-4 text-xs font-black text-blue-600">${c.count} Orders</td>
-                                        <td class="p-4 text-right font-black">₹${c.val}</td>
-                                    </tr>
-                                `).join('')}
-                            </tbody>
-                        </table>
-                    </div>
-                `;
-            }
-        }
-
-        // --- View: Settings ---
         function renderSettingsSection(container) {
             container.innerHTML = `
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 animate-in fade-in slide-in-from-bottom-4">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 animate-in fade-in">
                     <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm h-fit">
-                        <h3 class="text-lg font-black text-slate-900 uppercase flex items-center gap-2 mb-6"><i data-lucide="contact" class="text-orange-600"></i>${state.editingDriver ? 'Update Partner' : 'Register Partner'}</h3>
+                        <h3 id="driverFormTitle" class="text-lg font-bold text-slate-900 mb-6 flex items-center gap-2"><i data-lucide="user-plus" class="text-orange-600"></i>Register Personnel</h3>
                         <form id="driverForm" class="space-y-4">
-                            <div><label class="block text-xs font-bold text-slate-400 uppercase mb-1">Name</label><input type="text" id="d_name" class="w-full px-4 py-2 rounded-xl border border-slate-200 text-sm outline-none" value="${state.editingDriver ? state.editingDriver.name : ''}"></div>
-                            <div><label class="block text-xs font-bold text-slate-400 uppercase mb-1">Mobile</label><input type="text" id="d_phone" class="w-full px-4 py-2 rounded-xl border border-slate-200 text-sm outline-none" value="${state.editingDriver ? state.editingDriver.phone : ''}"></div>
-                            <div><label class="block text-xs font-bold text-slate-400 uppercase mb-1">Location Link</label><input type="text" id="d_link" class="w-full px-4 py-2 rounded-xl border border-slate-200 text-sm outline-none" value="${state.editingDriver ? state.editingDriver.addressLink : ''}"></div>
+                            <div><label class="text-xs font-bold text-slate-400 uppercase block mb-1">Name</label><input type="text" id="d_name" class="w-full px-4 py-2 border rounded-xl text-sm outline-none focus:ring-2 focus:ring-orange-500/20"></div>
+                            <div><label class="text-xs font-bold text-slate-400 uppercase block mb-1">Mobile</label><input type="text" id="d_phone" class="w-full px-4 py-2 border rounded-xl text-sm outline-none focus:ring-2 focus:ring-orange-500/20"></div>
+                            <div><label class="text-xs font-bold text-slate-400 uppercase block mb-1">Location Link</label><input type="text" id="d_link" placeholder="Map tracking URL" class="w-full px-4 py-2 border rounded-xl text-sm outline-none"></div>
                             <div class="flex gap-2">
-                                <button type="submit" class="flex-1 ${state.editingDriver ? 'bg-blue-600' : 'bg-slate-900'} text-white py-3 rounded-xl font-bold uppercase text-xs">${state.editingDriver ? 'Update' : 'Register'}</button>
-                                ${state.editingDriver ? `<button type="button" onclick="cancelDriverEdit()" class="px-4 bg-slate-100 text-slate-500 rounded-xl font-bold text-xs">Cancel</button>` : ''}
+                                <button type="submit" id="driverBtn" class="flex-1 bg-slate-900 text-white py-3 rounded-xl font-bold hover:bg-orange-600 transition-colors uppercase text-xs shadow-lg">Register</button>
+                                <button type="button" id="cancelDriverBtn" onclick="window.resetDriverForm()" class="px-4 bg-slate-100 text-slate-500 rounded-xl font-bold text-xs hidden">Cancel</button>
                             </div>
                         </form>
                     </div>
-                    <div class="bg-white rounded-2xl border border-slate-100 shadow-sm h-fit">
-                        <div class="p-6 border-b border-slate-100 font-black uppercase text-sm">Active Partners</div>
-                        <div class="divide-y divide-slate-100">
-                            ${state.drivers.map((d, i) => `
-                                <div class="flex items-center justify-between p-4 group">
-                                    <div class="flex items-center gap-3">
-                                        <div class="w-10 h-10 bg-orange-100 text-orange-600 flex items-center justify-center rounded-lg font-black text-xs">${d.name.substring(0, 2)}</div>
-                                        <div><p class="font-bold text-sm">${d.name}</p><p class="text-[10px] text-slate-400">${d.phone}</p></div>
-                                    </div>
-                                    <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <button onclick="editDriver(${i})" class="p-2 text-slate-400 hover:text-blue-600"><i data-lucide="edit-2" class="w-4 h-4"></i></button>
-                                        <button onclick="deleteDriver(${i})" class="p-2 text-slate-400 hover:text-rose-600"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
-                                    </div>
-                                </div>
-                            `).join('')}
-                        </div>
-                    </div>
+                    <div class="bg-white rounded-2xl border border-slate-100 shadow-sm h-fit"><div class="p-6 border-b border-slate-100 font-black uppercase text-xs text-slate-400 tracking-widest">Active Team</div><div id="driverList" class="divide-y divide-slate-100"></div></div>
                 </div>
             `;
-
             document.getElementById('driverForm').onsubmit = (e) => {
                 e.preventDefault();
-                const d = { name: document.getElementById('d_name').value, phone: document.getElementById('d_phone').value, addressLink: document.getElementById('d_link').value };
-                if (state.editingDriver !== null) state.drivers[state.editingDriver] = d;
-                else state.drivers.push(d);
-                state.editingDriver = null;
-                renderView();
+                window.saveDriver({ name: document.getElementById('d_name').value, phone: document.getElementById('d_phone').value, addressLink: document.getElementById('d_link').value });
             };
+            window.renderDriverList();
         }
 
-        function editDriver(i) { state.editingDriver = i; renderView(); }
-        function cancelDriverEdit() { state.editingDriver = null; renderView(); }
-        function deleteDriver(i) { if(confirm("Remove driver?")) { state.drivers.splice(i, 1); renderView(); } }
+        // --- Logic Handlers (Window Scope) ---
+        window.updateTopCustomers = () => {
+            const f = document.getElementById('top_from')?.value;
+            const t = document.getElementById('top_to')?.value;
+            const cid = document.getElementById('top_cid')?.value?.toLowerCase();
+            const filtered = state.deliveries.filter(d => {
+                const mid = cid ? d.customerId.toLowerCase().includes(cid) : true;
+                const mrange = (f && t) ? (d.date >= f && d.date <= t) : true;
+                return mid && mrange;
+            });
+            const map = {};
+            filtered.forEach(d => { if(!map[d.customerId]) map[d.customerId] = { name: d.customerName, count: 0, total: 0 }; map[d.customerId].count++; map[d.customerId].total += Number(d.amount); });
+            const ranked = Object.entries(map).map(([id, data]) => ({ id, ...data })).sort((a,b) => b.count - a.count);
+            const dEl = document.getElementById('topCustomersDisplay');
+            if(dEl) dEl.innerHTML = `<div class="overflow-x-auto"><table class="w-full text-left"><thead class="bg-slate-50 border-b border-slate-100"><tr><th class="px-6 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest">Rank</th><th class="px-6 py-4 text-center text-[10px] font-black uppercase text-slate-400 tracking-widest">Orders</th><th class="px-6 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest">Customer Info</th><th class="px-6 py-4 text-right text-[10px] font-black uppercase text-slate-400 tracking-widest">Business Value</th></tr></thead><tbody class="divide-y divide-slate-100">${ranked.length === 0 ? '<tr><td colspan="4" class="p-12 text-center text-slate-300 font-medium">No records found.</td></tr>' : ranked.map((c, i) => `<tr class="hover:bg-slate-50/50"><td class="px-6 py-4"><div class="w-7 h-7 flex items-center justify-center rounded-full font-black text-xs ${i === 0 ? 'bg-orange-500 text-white' : 'bg-slate-100'}">${i+1}</div></td><td class="px-6 py-4 text-center"><span class="px-3 py-1 rounded-full bg-blue-50 text-blue-600 text-xs font-black">${c.count}</span></td><td class="px-6 py-4 font-bold text-slate-800">${c.name}<br><span class="text-[9px] text-slate-400 uppercase font-black tracking-widest">ID: ${c.id}</span></td><td class="px-6 py-4 text-right font-black italic">₹${c.total.toLocaleString()}</td></tr>`).join('')}</tbody></table></div>`;
+        };
 
-        // --- Modals ---
-        function openModal(html) {
-            document.getElementById('modalBody').innerHTML = html;
-            document.getElementById('modalContainer').classList.remove('hidden');
+        window.updateMyPerformance = () => {
+            const drv = document.getElementById('perf_driver')?.value || 'All';
+            const f = document.getElementById('perf_from')?.value;
+            const t = document.getElementById('perf_to')?.value;
+            const filtered = state.deliveries.filter(d => (drv === 'All' || d.driver === drv) && ((f && t) ? (d.date >= f && d.date <= t) : true));
+            const deliv = filtered.filter(d => d.status === 'Delivered');
+            const totalMs = deliv.filter(d => d.deliveredAt && d.pickedUpAt).reduce((a,c) => a + (c.deliveredAt - c.pickedUpAt), 0);
+            const validCount = deliv.filter(d => d.deliveredAt && d.pickedUpAt).length;
+            const metrics = document.getElementById('perfMetrics');
+            if(metrics) metrics.innerHTML = `<div class="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm"><p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Delivered</p><h3 class="text-4xl font-black mt-2 text-slate-900">${deliv.length}</h3></div><div class="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm"><p class="text-[10px] font-black text-slate-400 uppercase tracking-widest text-blue-600">Avg Trip Time</p><h3 class="text-4xl font-black mt-2 text-blue-600">${window.formatDuration(validCount > 0 ? totalMs / validCount : 0)}</h3></div>`;
+            const log = document.getElementById('perfLogBody');
+            if(log) log.innerHTML = deliv.length === 0 ? '<tr><td colspan="4" class="p-12 text-center text-slate-300 font-medium italic">No personal activity recorded for this selection.</td></tr>' : deliv.map(o => `<tr class="hover:bg-slate-50 transition-colors"><td class="px-6 py-4 font-black text-xs text-slate-700">${o.id}<br><span class="text-[9px] font-black text-slate-400 uppercase tracking-tighter">${o.customerName}</span></td><td class="px-6 py-4 text-center text-xs font-bold text-slate-600">${window.formatTime(o.pickedUpAt)}</td><td class="px-6 py-4 text-center text-xs font-bold text-slate-600">${window.formatTime(o.deliveredAt)}</td><td class="px-6 py-4 text-right font-black text-blue-600 italic text-xs tracking-tighter">${window.formatDuration(o.deliveredAt - o.pickedUpAt)}</td></tr>`).join('');
             lucide.createIcons();
-        }
+        };
 
-        function closeModal() {
-            document.getElementById('modalContainer').classList.add('hidden');
-        }
+        window.renderPastOrdersList = () => {
+            const f = document.getElementById('p_from')?.value || '';
+            const t = document.getElementById('p_to')?.value || '';
+            const drv = document.getElementById('p_driver')?.value || 'All';
+            const filtered = state.deliveries.filter(d => d.status === 'Delivered' && (drv === 'All' || d.driver === drv) && ((f && t) ? (d.date >= f && d.date <= t) : true));
+            const body = document.getElementById('pastOrdersBody');
+            if(body) body.innerHTML = filtered.length === 0 ? '<tr><td colspan="3" class="p-12 text-center text-slate-300 font-medium italic">No past orders matching selection.</td></tr>' : filtered.map(o => `<tr onclick="window.showPastOrderDetail('${o.firebaseId}')" class="hover:bg-slate-50/50 cursor-pointer transition-colors"><td class="px-6 py-4 font-black text-xs text-slate-700">${o.id}<br><span class="text-[10px] text-slate-400 font-bold">${o.date} • ${o.customerName}</span></td><td class="px-6 py-4 text-center"><span class="px-3 py-1 bg-slate-100 rounded-full text-[10px] font-black uppercase tracking-widest text-slate-500">${o.driver}</span></td><td class="px-6 py-4 text-right font-black text-emerald-600">₹${o.amount}</td></tr>`).join('');
+            lucide.createIcons();
+        };
 
-        // Initialize on Load
-        window.onload = init;
+        window.resetPastFilters = () => { if(document.getElementById('p_from')) document.getElementById('p_from').value = ''; if(document.getElementById('p_to')) document.getElementById('p_to').value = ''; if(document.getElementById('p_driver')) document.getElementById('p_driver').value = 'All'; window.renderPastOrdersList(); };
+        window.resetTopFilters = () => { state.topCustomerFilter = { fromDate: '', toDate: '', customerId: '' }; renderTopCustomersSection(document.getElementById('viewContent')); };
+
+        window.renderDriverList = () => {
+            const list = document.getElementById('driverList');
+            if(!list) return;
+            list.innerHTML = state.drivers.map((d, i) => `<div class="flex items-center justify-between p-4 group transition-colors hover:bg-slate-50"><div class="flex items-center gap-3"><div class="w-10 h-10 bg-slate-100 text-slate-400 flex items-center justify-center rounded-lg font-black text-xs uppercase shadow-sm">${d.name.substring(0, 2)}</div><div><p class="font-bold text-sm text-slate-700">${d.name}</p><p class="text-[10px] text-slate-400 font-bold">${d.phone}</p></div></div><div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity"><button onclick="window.editDriver(${i})" class="p-2 text-slate-400 hover:text-blue-500 transition-colors"><i data-lucide="edit-2" class="w-4 h-4"></i></button><button onclick="window.removeDriver('${d.firebaseId}')" class="p-2 text-slate-400 hover:text-rose-600 transition-colors"><i data-lucide="trash-2" class="w-4 h-4"></i></button></div></div>`).join('');
+            lucide.createIcons();
+        };
+
+        window.resetDriverForm = () => {
+            state.editingDriverIndex = null;
+            ['d_name', 'd_phone', 'd_link'].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
+            const btn = document.getElementById('driverBtn');
+            const title = document.getElementById('driverFormTitle');
+            const cancel = document.getElementById('cancelDriverBtn');
+            if (btn) btn.innerText = 'Register';
+            if (title) title.innerText = 'Register Personnel';
+            if (cancel) cancel.classList.add('hidden');
+        };
+
+        // --- Main Initialization ---
+        initBackend();
     </script>
 </body>
 </html>
-
