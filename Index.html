@@ -134,7 +134,11 @@
             performanceFilter: { driver: 'All', fromDate: '', toDate: '' },
             topCustomerFilter: { fromDate: '', toDate: '', customerId: '' },
             listenersStarted: false,
-            initialLoadCount: 0
+            initialLoadStatus: {
+                customers: false,
+                deliveries: false,
+                drivers: false
+            }
         };
 
         const menuItems = [
@@ -245,6 +249,16 @@
         // --- Backend Auth & Listeners ---
         async function initBackend() {
             try {
+                // Mobile network timeout: Force proceed if sync takes more than 4 seconds
+                setTimeout(() => {
+                    const overlay = document.getElementById('loadingOverlay');
+                    if (overlay && !overlay.classList.contains('hidden')) {
+                        overlay.classList.add('hidden');
+                        renderSidebar();
+                        renderView();
+                    }
+                }, 4000);
+
                 if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
                     await signInWithCustomToken(auth, __initial_auth_token);
                 } else {
@@ -271,12 +285,14 @@
 
             onSnapshot(publicPath('customers'), (snapshot) => {
                 state.customers = snapshot.docs.map(doc => ({ firebaseId: doc.id, ...doc.data() }));
+                state.initialLoadStatus.customers = true;
                 checkInitialLoading();
                 if (state.currentView === 'customers') renderCustomerList();
             }, (err) => console.error("Customer sync failed", err));
 
             onSnapshot(publicPath('deliveries'), (snapshot) => {
                 state.deliveries = snapshot.docs.map(doc => ({ firebaseId: doc.id, ...doc.data() }));
+                state.initialLoadStatus.deliveries = true;
                 checkInitialLoading();
                 if (state.currentView === 'assign' || state.currentView === 'today' || state.currentView === 'past') renderView();
             }, (err) => console.error("Deliveries sync failed", err));
@@ -284,14 +300,15 @@
             onSnapshot(publicPath('drivers'), (snapshot) => {
                 state.drivers = snapshot.docs.map(doc => ({ firebaseId: doc.id, ...doc.data() }));
                 if (!state.activeTodayDriver && state.drivers.length > 0) state.activeTodayDriver = state.drivers[0].name;
+                state.initialLoadStatus.drivers = true;
                 checkInitialLoading();
                 if (state.currentView === 'settings') renderDriverList();
             }, (err) => console.error("Drivers sync failed", err));
         }
 
         function checkInitialLoading() {
-            state.initialLoadCount++;
-            if (state.initialLoadCount >= 3) {
+            const { customers, deliveries, drivers } = state.initialLoadStatus;
+            if (customers && deliveries && drivers) {
                 const overlay = document.getElementById('loadingOverlay');
                 if (overlay) overlay.classList.add('hidden');
                 renderSidebar();
@@ -540,7 +557,6 @@
         window.saveCustomer = async (e) => {
             e.preventDefault();
             if (!state.user) return;
-            const btn = document.getElementById('customerSaveBtn');
             
             const data = {
                 id: document.getElementById('c_id').value,
@@ -577,7 +593,6 @@
 
         window.saveDriver = async (data) => {
             const coll = collection(db, 'artifacts', appId, 'public', 'data', 'drivers');
-            // Ensure phone has +91
             data.phone = window.formatPhone(data.phone);
 
             if (state.editingDriverIndex !== null) {
@@ -747,6 +762,42 @@
                         </select>
                     </div>
                     <button onclick="window.confirmAssignment()" class="w-full bg-orange-600 text-white py-4 rounded-2xl font-black uppercase tracking-widest hover:bg-orange-700 transition-colors shadow-lg mt-4">Confirm Assignment</button>
+                </div>
+            `);
+        };
+
+        window.showOrderAssignment = (fid) => {
+            const o = state.deliveries.find(x => x.firebaseId === fid);
+            const c = state.customers.find(x => x.id === o.customerId);
+            if(!o || !c) return;
+            window.openModal(`
+                <div class="bg-slate-900 p-6 text-white flex justify-between items-center rounded-t-3xl">
+                    <div><h3 class="text-xl font-black uppercase tracking-tight text-white">Hub Detail</h3><p class="text-slate-400 text-xs font-bold uppercase mt-0.5">${o.id}</p></div>
+                    <button onclick="window.closeModal()" class="p-2 hover:bg-slate-800 rounded-full"><i data-lucide="x"></i></button>
+                </div>
+                <div class="p-8 space-y-6">
+                    <div class="space-y-1">
+                        <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Customer</p>
+                        <h4 class="font-black text-slate-900 text-2xl leading-tight">${o.customerName}</h4>
+                        <div class="flex items-start gap-2 text-slate-600 mt-2">
+                            <i data-lucide="map-pin" class="w-4 h-4 mt-0.5 flex-shrink-0 text-orange-500"></i>
+                            <p class="text-sm font-medium leading-relaxed">${c.address}</p>
+                        </div>
+                    </div>
+
+                    <div class="bg-orange-50 p-4 rounded-xl border border-orange-100 flex justify-between items-center">
+                        <div><p class="text-[10px] font-bold text-orange-600 uppercase">Collect</p><p class="text-xl font-black text-slate-900">Rs ${o.amount}</p></div>
+                        <p class="text-[10px] font-black uppercase bg-white border border-orange-200 px-2 py-1 rounded text-orange-600">${o.paymentMode}</p>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3 pt-2">
+                        <a href="tel:${window.formatPhone(c.primaryPhone)}" class="flex items-center justify-center gap-2 p-4 rounded-2xl bg-blue-600 text-white font-black uppercase text-xs shadow-lg hover:bg-blue-700 transition-all">
+                            <i data-lucide="phone" class="w-4 h-4"></i> Call
+                        </a>
+                        <button onclick="window.notifyViaWA('${fid}')" class="flex items-center justify-center gap-2 p-4 rounded-2xl bg-emerald-600 text-white font-black uppercase text-xs shadow-lg hover:bg-emerald-700 transition-all">
+                            <i data-lucide="message-circle" class="w-4 h-4"></i> WhatsApp
+                        </button>
+                    </div>
                 </div>
             `);
         };
