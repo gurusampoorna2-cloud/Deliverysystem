@@ -49,7 +49,7 @@
     <div id="loadingOverlay" class="fixed inset-0 z-[200] bg-white flex flex-col items-center justify-center space-y-4">
         <div class="loading-spinner"></div>
         <p class="text-xs font-black uppercase tracking-widest text-slate-400">Syncing with GURU Cloud...</p>
-        <button id="skipLoading" onclick="window.dismissLoading()" class="hidden text-[10px] font-black uppercase text-orange-600 tracking-tighter border-b border-orange-200 pb-1">Proceed to Dashboard</button>
+        <button id="skipLoading" onclick="window.dismissLoading()" class="hidden px-6 py-2 bg-slate-900 text-white rounded-full text-[10px] font-black uppercase tracking-widest transition-all hover:bg-orange-600">Proceed to Dashboard</button>
     </div>
 
     <!-- Sidebar Overlay -->
@@ -256,48 +256,49 @@
 
         // --- Backend Auth & Listeners ---
         async function initBackend() {
+            // UI Helpers for slow mobile connection
+            setTimeout(() => {
+                const skip = document.getElementById('skipLoading');
+                if (skip) skip.classList.remove('hidden');
+            }, 2000);
+
+            // Fail-safe auto-dismissal for mobile
+            setTimeout(() => {
+                if (document.getElementById('loadingOverlay')) window.dismissLoading();
+            }, 5000);
+
             try {
-                // Mobile Sync UI Helpers
-                setTimeout(() => {
-                    const skip = document.getElementById('skipLoading');
-                    if (skip) skip.classList.remove('hidden');
-                }, 2000);
-
-                // Ultimate Timeout: Proceed if synchronization hasn't finished in 4 seconds
-                setTimeout(() => {
-                    const overlay = document.getElementById('loadingOverlay');
-                    if (overlay && !overlay.classList.contains('hidden')) {
-                        window.dismissLoading();
-                    }
-                }, 4000);
-
+                // Step 1: Sign in FIRST as per Rule 3
+                let user;
                 if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                    await signInWithCustomToken(auth, __initial_auth_token);
+                    const result = await signInWithCustomToken(auth, __initial_auth_token);
+                    user = result.user;
                 } else {
-                    await signInAnonymously(auth);
+                    const result = await signInAnonymously(auth);
+                    user = result.user;
                 }
                 
-                onAuthStateChanged(auth, (user) => {
-                    if (user) {
-                        state.user = user;
-                        if (!state.listenersStarted) {
-                            state.listenersStarted = true;
-                            startListeners();
-                        }
+                if (user) {
+                    state.user = user;
+                    // Step 2: Start listeners immediately after auth
+                    if (!state.listenersStarted) {
+                        state.listenersStarted = true;
+                        startListeners();
                     }
-                });
+                }
+
+                // Monitor auth changes for state persistence
+                onAuthStateChanged(auth, (u) => { state.user = u; });
+
             } catch (error) {
                 console.error("Auth Error:", error);
-                document.getElementById('loadingOverlay').innerHTML = `
-                    <div class="p-8 text-center">
-                        <p class="text-rose-600 font-black text-xs uppercase tracking-widest">Network/Auth Error</p>
-                        <button onclick="location.reload()" class="mt-4 px-6 py-2 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase">Retry</button>
-                    </div>
-                `;
+                // On error, let user try to enter anyway
+                setTimeout(window.dismissLoading, 1000);
             }
         }
 
         function startListeners() {
+            if (!state.user) return;
             const publicPath = (coll) => collection(db, 'artifacts', appId, 'public', 'data', coll);
 
             const handleLoaded = (key) => {
@@ -309,29 +310,20 @@
                 state.customers = snapshot.docs.map(doc => ({ firebaseId: doc.id, ...doc.data() }));
                 if (state.currentView === 'customers') renderCustomerList();
                 handleLoaded('customers');
-            }, (err) => {
-                console.error("Customer sync failed", err);
-                handleLoaded('customers');
-            });
+            }, (err) => { handleLoaded('customers'); });
 
             onSnapshot(publicPath('deliveries'), (snapshot) => {
                 state.deliveries = snapshot.docs.map(doc => ({ firebaseId: doc.id, ...doc.data() }));
-                if (state.currentView === 'assign' || state.currentView === 'today' || state.currentView === 'past') renderView();
+                if (['assign', 'today', 'past'].includes(state.currentView)) renderView();
                 handleLoaded('deliveries');
-            }, (err) => {
-                console.error("Deliveries sync failed", err);
-                handleLoaded('deliveries');
-            });
+            }, (err) => { handleLoaded('deliveries'); });
 
             onSnapshot(publicPath('drivers'), (snapshot) => {
                 state.drivers = snapshot.docs.map(doc => ({ firebaseId: doc.id, ...doc.data() }));
                 if (!state.activeTodayDriver && state.drivers.length > 0) state.activeTodayDriver = state.drivers[0].name;
                 if (state.currentView === 'settings') renderDriverList();
                 handleLoaded('drivers');
-            }, (err) => {
-                console.error("Drivers sync failed", err);
-                handleLoaded('drivers');
-            });
+            }, (err) => { handleLoaded('drivers'); });
         }
 
         function checkInitialLoading() {
@@ -343,7 +335,8 @@
 
         // --- Communication Helpers ---
         window.formatPhone = (num) => {
-            let clean = num.replace(/\D/g, '');
+            if (!num) return '';
+            let clean = num.toString().replace(/\D/g, '');
             if (clean.length === 10) return `+91${clean}`;
             if (clean.length === 12 && clean.startsWith('91')) return `+${clean}`;
             return clean.startsWith('+') ? clean : `+91${clean}`;
@@ -442,31 +435,6 @@
                 </div>
             `;
             window.renderCustomerList();
-        }
-
-        function renderAssignSection(container) {
-            const pending = state.deliveries.filter(d => d.status === 'Pending' || d.status === 'Picked Up');
-            container.innerHTML = `
-                <div class="space-y-6 animate-in fade-in">
-                    <div class="flex justify-end"><button onclick="window.openAssignModal()" class="bg-orange-600 text-white w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg hover:scale-105 transition-transform"><i data-lucide="plus"></i></button></div>
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        ${pending.length === 0 ? `<div class="col-span-full py-20 text-center text-slate-400 border-2 border-dashed rounded-3xl">No pending assignments.</div>` : 
-                        pending.map(d => `
-                            <div onclick="window.showOrderAssignment('${d.firebaseId}')" class="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm border-t-4 border-t-orange-500 relative cursor-pointer">
-                                <button onclick="event.stopPropagation(); window.deleteOrder('${d.firebaseId}')" class="absolute top-4 right-4 p-1 bg-slate-50 text-slate-400 hover:text-rose-600 rounded"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
-                                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">#${d.id} • ${d.time}</p>
-                                <h4 class="text-slate-900 font-black text-lg mt-1">${d.customerName}</h4>
-                                <div class="flex flex-wrap gap-2 mt-2">
-                                   <span class="bg-slate-100 px-2 py-0.5 rounded text-[10px] font-bold text-slate-500 uppercase">Driver: ${d.driver}</span>
-                                   <span class="bg-orange-50 px-2 py-0.5 rounded text-[10px] font-bold text-orange-600 uppercase">Rs ${d.amount} • ${d.paymentMode}</span>
-                                </div>
-                                <div class="mt-3 text-[10px] font-black uppercase text-slate-400 flex items-center gap-1"><i data-lucide="clock" class="w-3 h-3"></i> ${d.status}</div>
-                            </div>
-                        `).join('')}
-                    </div>
-                </div>
-            `;
-            lucide.createIcons();
         }
 
         function renderPastSection(container) {
@@ -780,6 +748,7 @@
         window.deleteCustomer = async (fid) => { if (confirm("Delete customer?")) await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'customers', fid)); };
 
         window.updateDeliveryStatus = async (fid, status) => {
+            if (!state.user) return;
             const updates = { status };
             if (status === 'Picked Up') updates.pickedUpAt = Date.now();
             if (status === 'Delivered') updates.deliveredAt = Date.now();
@@ -788,6 +757,7 @@
         };
 
         window.saveDriver = async (data) => {
+            if (!state.user) return;
             const coll = collection(db, 'artifacts', appId, 'public', 'data', 'drivers');
             data.phone = window.formatPhone(data.phone);
 
