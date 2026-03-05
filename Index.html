@@ -59,29 +59,29 @@
         </div>
         <nav class="flex-1 py-4 px-3 space-y-1 overflow-y-auto">
             <p class="text-xs text-slate-500 uppercase tracking-wider px-3 mb-2 font-semibold">Main Menu</p>
-            <div class="nav-item flex items-center gap-3 px-3 py-3 rounded-lg cursor-pointer text-slate-300 hover:bg-slate-800" data-section="add-customer" onclick="window.switchSection('add-customer', this)">
+            <div class="nav-item flex items-center gap-3 px-3 py-3 rounded-lg cursor-pointer text-slate-300 hover:bg-slate-800" data-section="add-customer" onclick="window.attemptSwitchSection('add-customer', this)">
                 <i class="fas fa-user-plus w-5 text-center text-blue-400"></i>
                 <span class="text-sm font-medium">Add Customer</span>
             </div>
-            <div class="nav-item flex items-center gap-3 px-3 py-3 rounded-lg cursor-pointer text-slate-300 hover:bg-slate-800" data-section="assign-delivery" onclick="window.switchSection('assign-delivery', this)">
+            <div class="nav-item flex items-center gap-3 px-3 py-3 rounded-lg cursor-pointer text-slate-300 hover:bg-slate-800" data-section="assign-delivery" onclick="window.attemptSwitchSection('assign-delivery', this)">
                 <i class="fas fa-clipboard-list w-5 text-center text-purple-400"></i>
                 <span class="text-sm font-medium">Assign Delivery</span>
             </div>
-            <div class="nav-item flex items-center gap-3 px-3 py-3 rounded-lg cursor-pointer text-slate-300 hover:bg-slate-800" data-section="past-orders" onclick="window.switchSection('past-orders', this)">
+            <div class="nav-item flex items-center gap-3 px-3 py-3 rounded-lg cursor-pointer text-slate-300 hover:bg-slate-800" data-section="past-orders" onclick="window.attemptSwitchSection('past-orders', this)">
                 <i class="fas fa-history w-5 text-center text-orange-400"></i>
                 <span class="text-sm font-medium">Past Orders</span>
             </div>
 
             <p class="text-xs text-slate-500 uppercase tracking-wider px-3 mt-5 mb-2 font-semibold">System</p>
-            <div class="nav-item flex items-center gap-3 px-3 py-3 rounded-lg cursor-pointer text-slate-300 hover:bg-slate-800" data-section="settings" onclick="window.switchSection('settings', this)">
+            <div class="nav-item flex items-center gap-3 px-3 py-3 rounded-lg cursor-pointer text-slate-300 hover:bg-slate-800" data-section="settings" onclick="window.attemptSwitchSection('settings', this)">
                 <i class="fas fa-cog w-5 text-center text-slate-400"></i>
                 <span class="text-sm font-medium">Settings</span>
             </div>
 
             <p class="text-xs text-slate-500 uppercase tracking-wider px-3 mt-5 mb-2 font-semibold">Analysis & Data</p>
-            <div class="nav-item flex items-center gap-3 px-3 py-3 rounded-lg cursor-pointer text-slate-300 hover:bg-slate-800" data-section="analysis" onclick="window.switchSection('analysis', this)">
-                <i class="fas fa-chart-pie w-5 text-center text-green-400"></i>
-                <span class="text-sm font-medium">Analysis</span>
+            <div class="nav-item flex items-center gap-3 px-3 py-3 rounded-lg cursor-pointer text-slate-300 hover:bg-slate-800" data-section="customer-analysis" onclick="window.attemptSwitchSection('customer-analysis', this)">
+                <i class="fas fa-users w-5 text-center text-green-400"></i>
+                <span class="text-sm font-medium">Customer Analysis</span>
             </div>
         </nav>
         <div class="p-4 border-t border-slate-700 flex items-center gap-3">
@@ -92,15 +92,6 @@
 
     <!-- Main Content -->
     <div class="min-h-screen pb-24">
-        <div class="bg-gradient-to-r from-orange-600 via-orange-500 to-yellow-500 px-4 md:px-6 py-3 flex items-center justify-center shadow-lg z-40 relative">
-            <div class="flex items-center gap-2 md:gap-3">
-                <div class="w-8 h-8 md:w-9 md:h-9 bg-white/20 rounded-xl flex items-center justify-center">
-                    <i class="fas fa-truck-fast text-white text-base md:text-lg"></i>
-                </div>
-                <h1 class="text-white font-extrabold text-lg md:text-xl tracking-wide">GURU Delivery</h1>
-            </div>
-        </div>
-
         <!-- Top Bar -->
         <div class="bg-white shadow-sm border-b border-gray-200 px-4 md:px-6 py-3 md:py-4 flex items-center justify-between sticky top-0 z-30">
             <div class="flex items-center gap-3 md:gap-4">
@@ -312,14 +303,41 @@
             </div>
         </div>
 
-        <div id="analysis" class="section p-4 md:p-8 fade-in">
+        <div id="customer-analysis" class="section p-4 md:p-8 fade-in">
             <div class="max-w-6xl mx-auto">
+                <div class="bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-gray-200 mb-6 flex flex-col sm:flex-row flex-wrap gap-4 sm:items-end">
+                    <div class="flex-1 w-full sm:w-auto min-w-[150px]">
+                        <label class="block text-[10px] font-bold text-gray-400 uppercase mb-1 tracking-widest">From Date</label>
+                        <input type="date" id="analysisFromDate" onchange="window.renderAnalysis()" class="w-full border rounded-xl p-3 text-sm focus:border-green-500 outline-none">
+                    </div>
+                    <div class="flex-1 w-full sm:w-auto min-w-[150px]">
+                        <label class="block text-[10px] font-bold text-gray-400 uppercase mb-1 tracking-widest">To Date</label>
+                        <input type="date" id="analysisToDate" onchange="window.renderAnalysis()" class="w-full border rounded-xl p-3 text-sm focus:border-green-500 outline-none">
+                    </div>
+                </div>
+
                 <div class="analysis-section rounded-2xl p-6 md:p-8 mb-6 shadow-sm border border-green-200">
-                    <h3 class="text-lg md:text-xl font-bold text-green-900 mb-6">Business Analysis</h3>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
-                        <div class="bg-white/90 p-5 md:p-6 rounded-2xl shadow-sm border border-green-50"><p class="text-xs font-bold text-gray-400 uppercase mb-1">Total Revenue</p><p class="text-2xl md:text-3xl font-black text-green-600" id="analysisRevenue">₹0</p></div>
-                        <div class="bg-white/90 p-5 md:p-6 rounded-2xl shadow-sm border border-green-50"><p class="text-xs font-bold text-gray-400 uppercase mb-1">Avg Order Value</p><p class="text-2xl md:text-3xl font-black text-blue-600" id="analysisAvgOrder">₹0</p></div>
-                        <div class="bg-white/90 p-5 md:p-6 rounded-2xl shadow-sm border border-green-50"><p class="text-xs font-bold text-gray-400 uppercase mb-1">Success Rate</p><p class="text-2xl md:text-3xl font-black text-amber-600" id="analysisSuccessRate">0%</p></div>
+                    <h3 class="text-lg md:text-xl font-bold text-green-900 mb-6">Customer Insights & Revenue</h3>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6 mb-8">
+                        <div class="bg-white/90 p-5 md:p-6 rounded-2xl shadow-sm border border-green-50"><p class="text-[10px] md:text-xs font-bold text-gray-400 uppercase mb-1">Total Revenue</p><p class="text-xl md:text-3xl font-black text-green-600" id="analysisRevenue">₹0</p></div>
+                        <div class="bg-white/90 p-5 md:p-6 rounded-2xl shadow-sm border border-green-50"><p class="text-[10px] md:text-xs font-bold text-gray-400 uppercase mb-1">Avg Order Value</p><p class="text-xl md:text-3xl font-black text-blue-600" id="analysisAvgOrder">₹0</p></div>
+                        <div class="bg-white/90 p-5 md:p-6 rounded-2xl shadow-sm border border-green-50"><p class="text-[10px] md:text-xs font-bold text-gray-400 uppercase mb-1">Success Rate</p><p class="text-xl md:text-3xl font-black text-amber-600" id="analysisSuccessRate">0%</p></div>
+                        <div class="bg-white/90 p-5 md:p-6 rounded-2xl shadow-sm border border-green-50"><p class="text-[10px] md:text-xs font-bold text-gray-400 uppercase mb-1">Busiest Day</p><p class="text-xl md:text-2xl font-black text-purple-600" id="analysisBusiestDay">-</p></div>
+                    </div>
+
+                    <h3 class="text-lg md:text-xl font-bold text-green-900 mb-4">Top Customers</h3>
+                    <div class="overflow-x-auto bg-white rounded-xl shadow-sm border border-green-50">
+                        <table class="w-full text-sm">
+                            <thead class="bg-green-50 text-green-800 font-bold uppercase text-[10px] tracking-wider">
+                                <tr>
+                                    <th class="px-5 py-4 text-left">Rank</th>
+                                    <th class="px-5 py-4 text-left">Customer</th>
+                                    <th class="px-5 py-4 text-center">Total Orders</th>
+                                    <th class="px-5 py-4 text-right">Total Spent</th>
+                                </tr>
+                            </thead>
+                            <tbody id="topCustomersBody" class="divide-y divide-gray-100"></tbody>
+                        </table>
                     </div>
                 </div>
             </div>
@@ -355,20 +373,36 @@
 
     <!-- Bottom Tab Bar for Delivery Boy -->
     <div class="fixed bottom-0 left-0 w-full bg-white shadow-[0_-5px_15px_rgba(0,0,0,0.05)] border-t border-gray-100 flex justify-around items-center z-40 pt-3 pb-4 md:pb-3">
-        <button onclick="window.switchSection('today-delivery', this)" class="nav-item bottom-nav-item active text-orange-600 flex-1 flex flex-col items-center justify-center gap-1.5 transition hover:text-orange-500" data-section="today-delivery">
+        <button onclick="window.attemptSwitchSection('today-delivery', this)" class="nav-item bottom-nav-item active text-orange-600 flex-1 flex flex-col items-center justify-center gap-1.5 transition hover:text-orange-500" data-section="today-delivery">
             <div class="relative">
                 <i class="fas fa-calendar-day text-2xl"></i>
                 <span class="absolute -top-2 -right-3 bg-amber-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full shadow-sm" id="bottomTodayBadge">0</span>
             </div>
             <span class="text-[10px] font-bold uppercase tracking-widest mt-1">Today</span>
         </button>
-        <button onclick="window.switchSection('performance', this)" class="nav-item bottom-nav-item text-gray-400 flex-1 flex flex-col items-center justify-center gap-1.5 transition hover:text-orange-500" data-section="performance">
+        <button onclick="window.attemptSwitchSection('performance', this)" class="nav-item bottom-nav-item text-gray-400 flex-1 flex flex-col items-center justify-center gap-1.5 transition hover:text-orange-500" data-section="performance">
             <i class="fas fa-chart-line text-2xl"></i>
             <span class="text-[10px] font-bold uppercase tracking-widest mt-1">Performance</span>
         </button>
     </div>
 
     <!-- Modals -->
+    <!-- PIN Lock Modal -->
+    <div id="pinModal" class="fixed inset-0 flex items-center justify-center modal-overlay hidden z-[250]">
+        <div class="modal-content bg-white rounded-3xl shadow-2xl w-full max-w-sm mx-4 p-8 text-center border border-gray-100">
+            <div class="w-16 h-16 bg-slate-100 text-slate-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i class="fas fa-lock text-2xl"></i>
+            </div>
+            <h3 class="text-xl font-black text-gray-800 mb-2">Admin Access</h3>
+            <p class="text-sm text-gray-500 mb-6">Please enter the PIN to continue.</p>
+            <input type="password" id="adminPinInput" onkeydown="if(event.key==='Enter') window.verifyPin()" placeholder="••••••••" class="w-full border p-4 rounded-2xl bg-gray-50 text-center text-2xl tracking-[0.5em] font-black focus:ring-2 focus:ring-blue-500 outline-none mb-6">
+            <div class="flex gap-3">
+                <button onclick="window.closePinModal()" class="flex-1 bg-gray-100 text-gray-600 font-bold py-3 rounded-xl hover:bg-gray-200 transition">Cancel</button>
+                <button onclick="window.verifyPin()" class="flex-1 bg-slate-800 text-white font-bold py-3 rounded-xl hover:bg-slate-900 transition shadow-lg">Unlock</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Payment Confirmation Modal -->
     <div id="paymentConfirmModal" class="fixed inset-0 flex items-center justify-center modal-overlay hidden z-[150]">
         <div class="modal-content bg-white rounded-3xl shadow-2xl w-full max-w-sm mx-4 overflow-hidden">
@@ -582,6 +616,8 @@
         window.selectedDriverFilter = null;
         window.pendingConfirmAction = null; // Used for global confirmation modal
         window.pendingDeliveryCompletion = null; // Used for capturing exact delivery time
+        window.isSystemUnlocked = false; // PIN Lock state
+        window.pendingSection = null; // Stored section to jump to after unlock
 
         // --- Hoisted Logic Functions ---
         
@@ -609,6 +645,42 @@
             msgEl.textContent = msg;
             setTimeout(() => { toast.classList.add('translate-y-20', 'opacity-0'); toast.classList.replace('pointer-events-auto', 'pointer-events-none'); }, 3000);
         }
+
+        // Global PIN Lock Logic
+        window.attemptSwitchSection = (sectionId, navEl) => {
+            const unlockedSections = ['today-delivery', 'performance'];
+            if (unlockedSections.includes(sectionId) || window.isSystemUnlocked) {
+                window.switchSection(sectionId, navEl);
+            } else {
+                window.pendingSection = { id: sectionId, el: navEl };
+                document.getElementById('pinModal').classList.remove('hidden');
+                document.getElementById('adminPinInput').value = '';
+                document.getElementById('adminPinInput').focus();
+                window.closeSidebar(); // Close sidebar to show modal clearly
+            }
+        };
+
+        window.closePinModal = () => {
+            document.getElementById('pinModal').classList.add('hidden');
+            window.pendingSection = null;
+        };
+
+        window.verifyPin = () => {
+            const pin = document.getElementById('adminPinInput').value;
+            if (pin === '91113111') {
+                window.isSystemUnlocked = true;
+                window.closePinModal();
+                if (window.pendingSection) {
+                    window.switchSection(window.pendingSection.id, window.pendingSection.el);
+                    window.pendingSection = null;
+                }
+                window.showToast("System Unlocked", "success");
+            } else {
+                window.showToast("Incorrect PIN", "error");
+                document.getElementById('adminPinInput').value = '';
+                document.getElementById('adminPinInput').focus();
+            }
+        };
 
         // Global Confirmation Modal Logic
         window.openConfirmModal = (action) => {
@@ -868,14 +940,74 @@
         }
 
         function renderAnalysis() {
-            const del = window.deliveries.filter(d => d.status === 'delivered');
+            const fromDate = document.getElementById('analysisFromDate')?.value;
+            const toDate = document.getElementById('analysisToDate')?.value;
+
+            // Base filter by Date Period
+            let periodDeliveries = window.deliveries;
+            if (fromDate) periodDeliveries = periodDeliveries.filter(d => d.date >= fromDate);
+            if (toDate) periodDeliveries = periodDeliveries.filter(d => d.date <= toDate);
+
+            const del = periodDeliveries.filter(d => d.status === 'delivered');
             const rev = del.reduce((s, d) => s + parseFloat(d.amount || 0), 0);
+            
             const revEl = document.getElementById('analysisRevenue');
             if (revEl) revEl.textContent = '₹' + rev.toLocaleString();
+            
             const avgEl = document.getElementById('analysisAvgOrder');
             if (avgEl) avgEl.textContent = '₹' + (del.length > 0 ? (rev/del.length).toFixed(0) : 0);
+            
             const rateEl = document.getElementById('analysisSuccessRate');
-            if (rateEl) rateEl.textContent = (window.deliveries.length > 0 ? Math.round((del.length/window.deliveries.length)*100) : 0) + '%';
+            if (rateEl) rateEl.textContent = (periodDeliveries.length > 0 ? Math.round((del.length/periodDeliveries.length)*100) : 0) + '%';
+
+            // Calculate Busiest Day
+            const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+            const dayCounts = {};
+            let busiestDay = '-';
+            let maxCount = 0;
+
+            del.forEach(d => {
+                if(d.date) {
+                    const parts = d.date.split('-');
+                    if (parts.length === 3) {
+                        const dayIndex = new Date(parts[0], parts[1]-1, parts[2]).getDay();
+                        const dayName = days[dayIndex];
+                        dayCounts[dayName] = (dayCounts[dayName] || 0) + 1;
+                        if (dayCounts[dayName] > maxCount) {
+                            maxCount = dayCounts[dayName];
+                            busiestDay = dayName;
+                        }
+                    }
+                }
+            });
+
+            const dayEl = document.getElementById('analysisBusiestDay');
+            if (dayEl) dayEl.textContent = maxCount > 0 ? busiestDay : '-';
+
+            // Top Customers Table Logic
+            const custStats = {};
+            del.forEach(d => {
+                const key = d.customerPhone || d.customerName; // Best unique identifier
+                if (!custStats[key]) {
+                    custStats[key] = { name: d.customerName, phone: d.customerPhone, orders: 0, spent: 0 };
+                }
+                custStats[key].orders += 1;
+                custStats[key].spent += parseFloat(d.amount || 0);
+            });
+
+            // Sort by orders, then by spending
+            const sortedCustomers = Object.values(custStats).sort((a, b) => b.orders - a.orders || b.spent - a.spent);
+            const tbody = document.getElementById('topCustomersBody');
+            if (tbody) {
+                tbody.innerHTML = sortedCustomers.map((c, idx) => `
+                    <tr class="hover:bg-green-50/50 transition">
+                        <td class="px-5 py-4 font-black text-gray-400">#${idx + 1}</td>
+                        <td class="px-5 py-4 font-bold text-gray-800">${c.name} <span class="block text-[10px] text-gray-400 font-normal">+91 ${c.phone}</span></td>
+                        <td class="px-5 py-4 text-center font-black text-blue-600">${c.orders}</td>
+                        <td class="px-5 py-4 text-right font-black text-green-600">₹${c.spent.toLocaleString()}</td>
+                    </tr>
+                `).join('') || `<tr><td colspan="4" class="text-center py-10 text-gray-400 italic">No customer data for selected period</td></tr>`;
+            }
         }
 
         function updatePerfDriverSelect() {
@@ -901,45 +1033,6 @@
         window.renderPerformance = renderPerformance;
         window.renderAnalysis = renderAnalysis;
         window.updatePerfDriverSelect = updatePerfDriverSelect;
-
-        window.openEditPastOrderModal = (firebaseId) => {
-            const d = window.deliveries.find(x => x.firebaseId === firebaseId);
-            if (!d) return;
-
-            document.getElementById('editPastOrderId').value = firebaseId;
-            document.getElementById('editPastDriver').innerHTML = window.drivers.map((drv) => `<option value="${drv.name}" ${drv.name === d.driverName ? 'selected' : ''}>${drv.name}</option>`).join('');
-            document.getElementById('editPastAmount').value = d.amount;
-            
-            let payVal = d.payment.toLowerCase() === 'cod' ? 'Cash' : d.payment.charAt(0).toUpperCase() + d.payment.slice(1).toLowerCase();
-            document.getElementById('editPastPayment').value = payVal;
-            
-            document.getElementById('editPastDate').value = d.date;
-            
-            document.getElementById('editPastOrderModal').classList.remove('hidden');
-        };
-
-        window.closeEditPastOrderModal = () => {
-            document.getElementById('editPastOrderModal').classList.add('hidden');
-        };
-
-        window.submitEditPastOrder = async () => {
-            const editId = document.getElementById('editPastOrderId').value;
-            const driverName = document.getElementById('editPastDriver').value;
-            const amount = document.getElementById('editPastAmount').value;
-            const payment = document.getElementById('editPastPayment').value;
-            const date = document.getElementById('editPastDate').value;
-            
-            try {
-                await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'deliveries', editId), {
-                    driverName: driverName,
-                    amount: amount,
-                    payment: payment,
-                    date: date
-                });
-                window.closeEditPastOrderModal(); 
-                window.showToast("Order Updated", "success");
-            } catch (err) { window.showToast("Sync Error", "error"); }
-        };
 
         window.openSidebar = () => {
             document.getElementById('sidebar').classList.remove('hidden-sidebar');
@@ -976,14 +1069,14 @@
                 }
             });
             
-            const titles = { 'add-customer': ['Add Customer', 'Database'], 'assign-delivery': ['Assign', 'Tasks'], 'past-orders': ['Past Orders', 'History'], 'settings': ['Settings', 'Drivers'], 'analysis': ['Analysis', 'Trends'], 'today-delivery': ["Today's Delivery", 'Driver View'], 'performance': ['Performance', 'Efficiency'] };
+            const titles = { 'add-customer': ['Add Customer', 'Database'], 'assign-delivery': ['Assign', 'Tasks'], 'past-orders': ['Past Orders', 'History'], 'settings': ['Settings', 'Drivers'], 'customer-analysis': ['Customer Analysis', 'Top Performers'], 'today-delivery': ["Today's Delivery", 'Driver View'], 'performance': ['Performance', 'Efficiency'] };
             const [title, subtitle] = titles[sectionId] || ['GURU System', 'Delivery Management'];
             document.getElementById('pageTitle').textContent = title;
             document.getElementById('pageSubtitle').textContent = subtitle;
             
             if (sectionId === 'today-delivery') renderTodayCards();
             if (sectionId === 'performance') renderPerformance();
-            if (sectionId === 'analysis') renderAnalysis();
+            if (sectionId === 'customer-analysis') renderAnalysis();
             if (sectionId === 'past-orders') renderPastOrders();
             window.closeSidebar();
         };
@@ -1376,7 +1469,7 @@ Thank you for choosing Guru Sampoorna. We truly appreciate your trust in us 🙏
             });
         }, 1000);
 
-        document.addEventListener('keydown', e => { if (e.key === 'Escape') { window.closeCustomerModal(); window.closeAssignModal(); window.closeDetailModal(); window.closeSidebar(); window.closeConfirmModal(); window.closePaymentModal(); window.closeEditPastOrderModal(); } });
+        document.addEventListener('keydown', e => { if (e.key === 'Escape') { window.closeCustomerModal(); window.closeAssignModal(); window.closeDetailModal(); window.closeSidebar(); window.closeConfirmModal(); window.closePaymentModal(); window.closeEditPastOrderModal(); window.closePinModal(); } });
     </script>
 </body>
 </html>
