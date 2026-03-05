@@ -4,98 +4,379 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GURU Delivery System</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
-        body { font-family: 'Inter', sans-serif; }
-        .sidebar-transition { transition: transform 0.3s ease-in-out; }
-        .modal-bg { background-color: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px); }
-        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f1f1; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
-        
-        /* Fast Header Sync Animation */
-        .sync-pulse { animation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
-        @keyframes pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: .5; transform: scale(0.9); } }
-        
-        #notification-container { position: fixed; top: 20px; right: 20px; z-index: 300; pointer-events: none; }
-        .toast { pointer-events: auto; animation: slideIn 0.3s ease-out; }
-        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+        * { font-family: 'Inter', sans-serif; }
+        body { background: #f0f2f5; }
+        .sidebar { transition: transform 0.35s cubic-bezier(.4,0,.2,1), opacity 0.3s ease; }
+        .sidebar.hidden-sidebar { transform: translateX(-100%); opacity: 0; pointer-events: none; }
+        .sidebar-overlay { transition: opacity 0.3s ease; }
+        .sidebar-overlay.hidden-overlay { opacity: 0; pointer-events: none; }
+        .nav-item { transition: all 0.2s ease; }
+        .nav-item:hover { transform: translateX(4px); }
+        .nav-item.active { border-right: 4px solid #3b82f6; }
+        .card-hover { transition: all 0.3s ease; }
+        .card-hover:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0,0,0,0.1); }
+        .section { display: none; }
+        .section.active { display: block; }
+        .today-delivery-section { background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border: 2px solid #f59e0b; }
+        .performance-section { background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%); border: 2px solid #3b82f6; }
+        .analysis-section { background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); border: 2px solid #22c55e; }
+        .fade-in { animation: fadeIn 0.4s ease; }
+        @keyframes fadeIn { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+        .status-badge { padding: 2px 10px; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; }
+        .modal-overlay { background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); transition: opacity 0.3s ease; z-index: 100; }
+        .modal-content { animation: modalIn 0.3s ease; }
+        @keyframes modalIn { from { opacity:0; transform: scale(0.95) translateY(10px); } to { opacity:1; transform: scale(1) translateY(0); } }
+        input:focus, select:focus, textarea:focus { outline: none; box-shadow: 0 0 0 3px rgba(59,130,246,0.3); }
+        .hamburger-btn { transition: all 0.3s ease; }
+        .hamburger-btn:hover { background: #e5e7eb; }
+        .timer-badge { background: #1e293b; color: #fbbf24; font-family: monospace; font-weight: 700; padding: 2px 8px; border-radius: 6px; font-size: 0.8rem; }
     </style>
 </head>
-<body class="bg-slate-50 text-slate-900 overflow-x-hidden">
-
-    <div id="notification-container"></div>
-
-    <!-- Initial Loading State (Header Sync replaces full screen) -->
-    <div id="loadingOverlay" class="fixed inset-0 z-[200] bg-white flex flex-col items-center justify-center space-y-4">
-        <div class="loading-spinner"></div>
-        <p class="text-xs font-black uppercase tracking-widest text-slate-400">Syncing with GURU Cloud...</p>
-    </div>
+<body class="min-h-screen">
 
     <!-- Sidebar Overlay -->
-    <div id="sidebarOverlay" class="fixed inset-0 z-40 bg-slate-900/60 hidden transition-opacity duration-300" onclick="window.toggleSidebar()"></div>
+    <div id="sidebarOverlay" class="sidebar-overlay fixed inset-0 bg-black/30 z-40 hidden-overlay" onclick="window.closeSidebar()"></div>
 
-    <!-- Sidebar Drawer -->
-    <aside id="sidebar" class="fixed inset-y-0 left-0 z-50 w-72 bg-white shadow-2xl sidebar-transition -translate-x-full">
-        <div class="h-full flex flex-col p-6">
-            <div class="flex items-center justify-between mb-10 px-2">
-                <div class="flex items-center space-x-3 text-orange-600">
-                    <div class="w-10 h-10 bg-orange-600 rounded-xl flex items-center justify-center text-white">
-                        <i data-lucide="truck"></i>
-                    </div>
-                    <h1 class="text-xl font-black tracking-tighter text-slate-900 uppercase italic">GURU</h1>
+    <!-- Sidebar -->
+    <div id="sidebar" class="sidebar fixed left-0 top-0 h-full w-72 bg-slate-900 text-white z-50 flex flex-col shadow-2xl hidden-sidebar">
+        <div class="p-5 border-b border-slate-700 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 bg-orange-500 rounded-xl flex items-center justify-center">
+                    <i class="fas fa-truck-fast text-lg"></i>
                 </div>
-                <button onclick="window.toggleSidebar()" class="text-slate-400 hover:text-slate-900">
-                    <i data-lucide="x"></i>
-                </button>
+                <div>
+                    <h1 class="font-bold text-lg leading-tight">GURU</h1>
+                    <p class="text-xs text-slate-400">Delivery System</p>
+                </div>
             </div>
-            <nav id="navLinks" class="flex-1 space-y-2 overflow-y-auto custom-scrollbar pr-1"></nav>
+            <button onclick="window.closeSidebar()" class="text-slate-400 hover:text-white transition p-1">
+                <i class="fas fa-times text-xl"></i>
+            </button>
         </div>
-    </aside>
-
-    <main class="min-h-screen flex flex-col">
-        <!-- Top Navigation -->
-        <nav class="h-16 bg-white border-b border-slate-200 flex items-center px-4 md:px-8 sticky top-0 z-30">
-            <div class="absolute left-4">
-                <button onclick="window.toggleSidebar()" class="p-2 hover:bg-slate-50 rounded-lg text-slate-600 flex items-center gap-2">
-                    <i data-lucide="menu"></i>
-                    <span class="hidden md:block text-[10px] font-black uppercase tracking-widest">Menu</span>
-                </button>
+        <nav class="flex-1 py-4 px-3 space-y-1 overflow-y-auto">
+            <p class="text-xs text-slate-500 uppercase tracking-wider px-3 mb-2 font-semibold">Main Menu</p>
+            <div class="nav-item active flex items-center gap-3 px-3 py-3 rounded-lg cursor-pointer bg-slate-800 text-white" data-section="add-customer" onclick="window.switchSection('add-customer', this)">
+                <i class="fas fa-user-plus w-5 text-center text-blue-400"></i>
+                <span class="text-sm font-medium">Add Customer</span>
             </div>
-            <div class="flex-1 text-center flex items-center justify-center gap-3">
-                <h1 class="text-base md:text-lg font-black text-slate-900 tracking-[0.2em] uppercase italic inline-block text-orange-600">GURU Delivery System</h1>
-                <!-- Fast Header Sync Indicator -->
-                <div id="syncIndicator" class="flex items-center gap-1.5 px-2.5 py-1 bg-slate-100 rounded-full border border-slate-200 transition-all duration-500">
-                    <div id="syncDot" class="w-1.5 h-1.5 rounded-full bg-orange-500 sync-pulse"></div>
-                    <span id="syncText" class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Syncing</span>
-                </div>
+            <div class="nav-item flex items-center gap-3 px-3 py-3 rounded-lg cursor-pointer text-slate-300 hover:bg-slate-800" data-section="assign-delivery" onclick="window.switchSection('assign-delivery', this)">
+                <i class="fas fa-clipboard-list w-5 text-center text-purple-400"></i>
+                <span class="text-sm font-medium">Assign Delivery</span>
+            </div>
+            <div class="nav-item flex items-center gap-3 px-3 py-3 rounded-lg cursor-pointer text-slate-300 hover:bg-slate-800" data-section="past-orders" onclick="window.switchSection('past-orders', this)">
+                <i class="fas fa-history w-5 text-center text-orange-400"></i>
+                <span class="text-sm font-medium">Past Orders</span>
+            </div>
+
+            <p class="text-xs text-slate-500 uppercase tracking-wider px-3 mt-5 mb-2 font-semibold">System</p>
+            <div class="nav-item flex items-center gap-3 px-3 py-3 rounded-lg cursor-pointer text-slate-300 hover:bg-slate-800" data-section="settings" onclick="window.switchSection('settings', this)">
+                <i class="fas fa-cog w-5 text-center text-slate-400"></i>
+                <span class="text-sm font-medium">Settings</span>
+            </div>
+
+            <p class="text-xs text-slate-500 uppercase tracking-wider px-3 mt-5 mb-2 font-semibold">Analysis & Data</p>
+            <div class="nav-item flex items-center gap-3 px-3 py-3 rounded-lg cursor-pointer text-slate-300 hover:bg-slate-800" data-section="analysis" onclick="window.switchSection('analysis', this)">
+                <i class="fas fa-chart-pie w-5 text-center text-green-400"></i>
+                <span class="text-sm font-medium">Analysis</span>
+            </div>
+
+            <p class="text-xs text-slate-500 uppercase tracking-wider px-3 mt-5 mb-2 font-semibold">Highlights</p>
+            <div class="nav-item flex items-center gap-3 px-3 py-3 rounded-lg cursor-pointer text-slate-300 hover:bg-slate-800" data-section="today-delivery" onclick="window.switchSection('today-delivery', this)">
+                <i class="fas fa-calendar-day w-5 text-center text-amber-400"></i>
+                <span class="text-sm font-medium">Today's Delivery</span>
+                <span class="ml-auto bg-amber-500 text-white text-xs font-bold px-2 py-0.5 rounded-full" id="todayBadge">0</span>
+            </div>
+            <div class="nav-item flex items-center gap-3 px-3 py-3 rounded-lg cursor-pointer text-slate-300 hover:bg-slate-800" data-section="performance" onclick="window.switchSection('performance', this)">
+                <i class="fas fa-chart-line w-5 text-center text-emerald-400"></i>
+                <span class="text-sm font-medium">Performance</span>
             </div>
         </nav>
-
-        <div id="app" class="flex-1 p-4 md:p-8 max-w-7xl mx-auto w-full">
-            <div id="sectionHeader" class="mb-8 animate-in fade-in slide-in-from-top-2">
-                <h2 id="viewTitle" class="text-2xl font-black text-slate-900 uppercase tracking-tight">View Title</h2>
-                <p class="text-xs text-slate-400 font-bold tracking-widest uppercase mt-1">Real-time Operations</p>
-            </div>
-            <div id="viewContent" class="pb-20"></div>
+        <div class="p-4 border-t border-slate-700 flex items-center gap-3">
+            <div class="w-9 h-9 bg-gradient-to-br from-orange-400 to-orange-600 rounded-full flex items-center justify-center font-bold text-sm text-white">GP</div>
+            <p class="text-sm font-semibold text-slate-200">GovindP</p>
         </div>
-    </main>
-
-    <!-- Global Modal Container -->
-    <div id="modalContainer" class="fixed inset-0 z-[100] flex items-center justify-center p-4 hidden modal-bg">
-        <div id="modalBody" class="bg-white w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95"></div>
     </div>
 
-    <!-- Firebase SDK Implementation -->
+    <!-- Main Content -->
+    <div class="min-h-screen">
+        <div class="bg-gradient-to-r from-orange-600 via-orange-500 to-yellow-500 px-6 py-3 flex items-center justify-center shadow-lg z-40 relative">
+            <div class="flex items-center gap-3">
+                <div class="w-9 h-9 bg-white/20 rounded-xl flex items-center justify-center">
+                    <i class="fas fa-truck-fast text-white text-lg"></i>
+                </div>
+                <h1 class="text-white font-extrabold text-xl tracking-wide">GURU Delivery System</h1>
+            </div>
+        </div>
+
+        <!-- Top Bar -->
+        <div class="bg-white shadow-sm border-b border-gray-200 px-6 py-4 flex items-center justify-between sticky top-0 z-30">
+            <div class="flex items-center gap-4">
+                <button onclick="window.openSidebar()" class="hamburger-btn w-10 h-10 rounded-xl flex items-center justify-center border border-gray-200 text-gray-600 hover:text-orange-600 transition">
+                    <i class="fas fa-bars text-lg"></i>
+                </button>
+                <div>
+                    <h2 class="text-xl font-bold text-gray-800" id="pageTitle">Add Customer</h2>
+                    <p class="text-sm text-gray-500" id="pageSubtitle">Manage your customer database</p>
+                </div>
+            </div>
+            <div id="authStatus" class="text-[10px] font-bold text-gray-300 uppercase tracking-widest">Connecting...</div>
+        </div>
+
+        <!-- Sections -->
+        <div id="add-customer" class="section active p-6 md:p-8 fade-in">
+            <div class="max-w-6xl mx-auto">
+                <div class="flex items-center justify-between mb-6">
+                    <h3 class="text-xl font-bold text-gray-800" id="customerCount">0 customers</h3>
+                    <button onclick="window.openCustomerModal()" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-3 rounded-xl shadow-lg transition">
+                        <i class="fas fa-plus mr-2"></i>Add New Customer
+                    </button>
+                </div>
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm">
+                            <thead class="bg-gray-50 text-gray-500 font-bold uppercase text-[10px] tracking-wider">
+                                <tr>
+                                    <th class="px-5 py-4 text-left">ID</th>
+                                    <th class="px-5 py-4 text-left">Name</th>
+                                    <th class="px-5 py-4 text-left">Phone</th>
+                                    <th class="px-5 py-4 text-left">Address</th>
+                                    <th class="px-5 py-4 text-left">Map</th>
+                                    <th class="px-5 py-4 text-center">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="customerTableBody" class="divide-y divide-gray-100"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="assign-delivery" class="section p-6 md:p-8 fade-in">
+            <div class="max-w-6xl mx-auto">
+                <div class="flex items-center justify-between mb-6">
+                    <h3 class="text-xl font-bold text-gray-800">Assign Delivery</h3>
+                    <button onclick="window.openAssignModal()" class="bg-purple-600 hover:bg-purple-700 text-white font-semibold px-6 py-3 rounded-xl shadow-lg transition">Assign New</button>
+                </div>
+                <div id="deliveryCardsContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5"></div>
+            </div>
+        </div>
+
+        <div id="past-orders" class="section p-6 md:p-8 fade-in">
+            <div class="max-w-6xl mx-auto">
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+                    <div class="p-6 border-b flex justify-between items-center">
+                        <h3 class="font-bold text-gray-800">Order History</h3>
+                        <span id="pastOrderCount" class="text-sm text-gray-500 font-medium">0 orders</span>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm">
+                            <thead class="bg-gray-50 text-gray-500 font-bold uppercase text-[10px]">
+                                <tr>
+                                    <th class="px-5 py-4 text-left">Order ID</th>
+                                    <th class="px-5 py-4 text-left">Customer</th>
+                                    <th class="px-5 py-4 text-left">Driver</th>
+                                    <th class="px-5 py-4 text-left">Date</th>
+                                    <th class="px-5 py-4 text-left">Pickup</th>
+                                    <th class="px-5 py-4 text-left">Delivered</th>
+                                    <th class="px-5 py-4 text-left">Time Taken</th>
+                                    <th class="px-5 py-4 text-left">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="pastOrdersTableBody" class="divide-y divide-gray-100"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="settings" class="section p-6 md:p-8 fade-in">
+            <div class="max-w-4xl mx-auto space-y-6">
+                <div class="bg-white rounded-2xl shadow-sm border p-8">
+                    <h3 class="text-lg font-bold text-gray-800 mb-6"><i class="fas fa-id-card mr-2 text-blue-500"></i>Manage Drivers</h3>
+                    <form id="driverForm" class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8 bg-gray-50 p-6 rounded-xl border border-gray-200" onsubmit="window.saveDriver(event)">
+                        <input type="text" id="driverName" required placeholder="Driver Name" class="border p-3 rounded-xl text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none">
+                        <input type="tel" id="driverPhone" required placeholder="Phone Number" class="border p-3 rounded-xl text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none">
+                        <div class="md:col-span-2">
+                            <input type="url" id="driverTrackingLink" placeholder="Tracking Link (Optional)" class="w-full border p-3 rounded-xl text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none">
+                        </div>
+                        <button type="submit" class="bg-slate-800 text-white font-bold py-3 rounded-xl text-sm hover:bg-slate-900 transition">Add Driver</button>
+                    </form>
+                    <div class="overflow-hidden border rounded-xl shadow-sm">
+                        <table class="w-full text-sm">
+                            <thead class="bg-gray-50 text-gray-600 font-bold">
+                                <tr>
+                                    <th class="px-5 py-3 text-left">Name</th>
+                                    <th class="px-5 py-3 text-left">Phone</th>
+                                    <th class="px-5 py-3 text-center">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="driverTableBody" class="divide-y divide-gray-100"></tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="bg-red-50 p-6 rounded-2xl border border-red-100 flex justify-between items-center">
+                    <div>
+                        <p class="font-bold text-red-800">Factory Reset</p>
+                        <p class="text-xs text-red-600">Permanently delete all cloud data</p>
+                    </div>
+                    <button onclick="window.clearAllData()" class="bg-red-600 text-white px-6 py-2 rounded-xl text-sm font-bold shadow-md hover:bg-red-700 transition">Clear Data</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="analysis" class="section p-6 md:p-8 fade-in">
+            <div class="max-w-6xl mx-auto">
+                <div class="analysis-section rounded-2xl p-8 mb-6 shadow-sm border border-green-200">
+                    <h3 class="text-xl font-bold text-green-900 mb-6">Business Analysis</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div class="bg-white/90 p-6 rounded-2xl shadow-sm border border-green-50"><p class="text-xs font-bold text-gray-400 uppercase mb-1">Total Revenue</p><p class="text-3xl font-black text-green-600" id="analysisRevenue">₹0</p></div>
+                        <div class="bg-white/90 p-6 rounded-2xl shadow-sm border border-green-50"><p class="text-xs font-bold text-gray-400 uppercase mb-1">Avg Order Value</p><p class="text-3xl font-black text-blue-600" id="analysisAvgOrder">₹0</p></div>
+                        <div class="bg-white/90 p-6 rounded-2xl shadow-sm border border-green-50"><p class="text-xs font-bold text-gray-400 uppercase mb-1">Success Rate</p><p class="text-3xl font-black text-amber-600" id="analysisSuccessRate">0%</p></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="performance" class="section p-6 md:p-8 fade-in">
+            <div class="max-w-6xl mx-auto">
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-200 mb-6 flex flex-wrap gap-4 items-end">
+                    <div class="flex-1 min-w-[150px]">
+                        <label class="block text-[10px] font-bold text-gray-400 uppercase mb-1 tracking-widest">From Date</label>
+                        <input type="date" id="perfFromDate" onchange="window.renderPerformance()" class="w-full border rounded-xl p-3 text-sm focus:border-blue-500">
+                    </div>
+                    <div class="flex-1 min-w-[150px]">
+                        <label class="block text-[10px] font-bold text-gray-400 uppercase mb-1 tracking-widest">To Date</label>
+                        <input type="date" id="perfToDate" onchange="window.renderPerformance()" class="w-full border rounded-xl p-3 text-sm focus:border-blue-500">
+                    </div>
+                    <div class="flex-1 min-w-[150px]">
+                        <label class="block text-[10px] font-bold text-gray-400 uppercase mb-1 tracking-widest">Driver</label>
+                        <select id="perfDriverSelect" onchange="window.renderPerformance()" class="w-full border rounded-xl p-3 text-sm appearance-none bg-white">
+                            <option value="All">All Drivers</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="performance-section rounded-2xl p-10 mb-6 flex flex-wrap justify-around text-center gap-8 shadow-sm">
+                    <div><p class="text-xs font-bold text-blue-600 uppercase tracking-widest mb-1">Delivered</p><p class="text-6xl font-black text-blue-900" id="perfTotalDelivered">0</p></div>
+                    <div><p class="text-xs font-bold text-blue-600 uppercase tracking-widest mb-1">Avg Time</p><p class="text-6xl font-black text-blue-900" id="perfAvgTime">00:00</p></div>
+                </div>
+                <div id="perfAgentList" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+            </div>
+        </div>
+
+        <div id="today-delivery" class="section p-6 md:p-8 fade-in">
+            <div class="max-w-6xl mx-auto">
+                <div id="driverFilterToggle" class="flex flex-wrap gap-2 mb-6"></div>
+                <div class="today-delivery-section rounded-2xl p-8 mb-6 shadow-sm border border-amber-200">
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
+                        <div><p class="text-4xl font-black text-gray-800" id="todayTotal">0</p><p class="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Total</p></div>
+                        <div><p class="text-4xl font-black text-blue-600" id="todayPending">0</p><p class="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Pending</p></div>
+                        <div><p class="text-4xl font-black text-yellow-600" id="todayInTransit">0</p><p class="text-[10px] font-bold text-gray-500 uppercase tracking-widest">In Transit</p></div>
+                        <div><p class="text-4xl font-black text-green-600" id="todayCompleted">0</p><p class="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Completed</p></div>
+                    </div>
+                </div>
+                <div id="todayCardsContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <div id="customerModal" class="fixed inset-0 flex items-center justify-center modal-overlay hidden">
+        <div class="modal-content bg-white rounded-3xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden">
+            <div class="bg-blue-600 p-6 text-white flex justify-between items-center">
+                <h3 class="font-bold text-lg">Customer Detail</h3>
+                <button onclick="window.closeCustomerModal()"><i class="fas fa-times text-xl"></i></button>
+            </div>
+            <form id="customerForm" class="p-8 space-y-4" onsubmit="window.saveCustomer(event)">
+                <input type="hidden" id="editIndex" value="-1">
+                <input type="text" id="custId" required placeholder="Customer ID (e.g. C001)" class="w-full border p-4 rounded-2xl bg-gray-50 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                <input type="text" id="custName" required placeholder="Full Name" class="w-full border p-4 rounded-2xl bg-gray-50 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                <div class="grid grid-cols-2 gap-4">
+                    <input type="tel" id="custPhone" required placeholder="Phone" class="w-full border p-4 rounded-2xl bg-gray-50 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                    <input type="tel" id="custAltPhone" placeholder="Alt Phone" class="w-full border p-4 rounded-2xl bg-gray-50 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                </div>
+                <textarea id="custAddress" required placeholder="Complete Delivery Address" class="w-full border p-4 rounded-2xl bg-gray-50 text-sm h-24 focus:ring-2 focus:ring-blue-500 outline-none"></textarea>
+                <input type="url" id="custMapLink" placeholder="Google Maps Link" class="w-full border p-4 rounded-2xl bg-gray-50 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                <button type="submit" id="modalSaveBtn" class="w-full bg-blue-600 text-white font-black py-4 rounded-2xl shadow-lg hover:bg-blue-700 transition active:scale-95">Save Customer</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="assignModal" class="fixed inset-0 flex items-center justify-center modal-overlay hidden">
+        <div class="modal-content bg-white rounded-3xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden">
+            <div class="bg-purple-600 p-6 text-white flex justify-between items-center"><h3 class="font-bold">New Delivery Task</h3><button onclick="window.closeAssignModal()"><i class="fas fa-times"></i></button></div>
+            <div class="p-8 space-y-4">
+                <input type="text" id="assignSearchInput" oninput="window.searchCustomersForAssign()" placeholder="Search Customer Name or Phone..." class="w-full border p-4 rounded-2xl bg-gray-50 text-sm focus:ring-2 focus:ring-purple-500 outline-none">
+                <div id="assignSearchResults" class="max-h-40 overflow-y-auto border rounded-xl hidden bg-white shadow-inner divide-y"></div>
+                <div id="selectedCustomerCard" class="bg-purple-50 p-4 rounded-2xl border border-purple-100 hidden">
+                    <p id="selCustName" class="font-bold text-purple-900"></p>
+                    <p id="selCustId" class="text-[10px] text-purple-400 font-bold uppercase tracking-widest"></p>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <input type="number" id="assignAmount" placeholder="Total Amount" class="border p-4 rounded-2xl bg-gray-50 text-sm focus:ring-2 focus:ring-purple-500 outline-none">
+                    <div class="flex items-center gap-4 text-xs font-bold px-2">
+                        <label class="cursor-pointer flex items-center"><input type="radio" name="paymentMode" value="COD" checked class="mr-2 accent-purple-600"> COD</label>
+                        <label class="cursor-pointer flex items-center"><input type="radio" name="paymentMode" value="Prepaid" class="mr-2 accent-purple-600"> PAID</label>
+                    </div>
+                </div>
+                <select id="assignDriver" class="w-full border p-4 rounded-2xl bg-gray-50 text-sm appearance-none focus:ring-2 focus:ring-purple-500 outline-none"></select>
+                <input type="date" id="assignDate" class="w-full border p-4 rounded-2xl bg-gray-50 text-sm focus:ring-2 focus:ring-purple-500 outline-none">
+                <button onclick="window.submitAssignment()" id="assignSubmitBtn" class="w-full bg-purple-600 text-white font-black py-4 rounded-2xl shadow-lg disabled:bg-gray-200 transition active:scale-95" disabled>Create Task</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="deliveryDetailModal" class="fixed inset-0 flex items-center justify-center modal-overlay hidden">
+        <div class="modal-content bg-white rounded-3xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden">
+            <div class="bg-slate-900 p-6 text-white flex justify-between items-center">
+                <div><h3 class="font-bold text-lg" id="detailOrderId">Details</h3><div id="detailTimer" class="timer-badge mt-1 hidden">00:00:00</div></div>
+                <button onclick="window.closeDetailModal()"><i class="fas fa-times text-xl"></i></button>
+            </div>
+            <div class="p-8 space-y-6">
+                <div id="detailStatus" class="status-badge text-center inline-block text-[10px] uppercase tracking-widest"></div>
+                <div>
+                    <p class="text-[10px] text-gray-400 uppercase font-black mb-1 tracking-widest">Customer Information</p>
+                    <p id="detailCustName" class="font-bold text-xl text-gray-800"></p>
+                    <p id="detailCustPhone" class="text-sm font-semibold text-gray-500"></p>
+                    <p id="detailCustAddress" class="text-sm text-gray-600 mt-2 leading-relaxed"></p>
+                </div>
+                <div class="flex justify-between items-center p-5 bg-gray-50 rounded-2xl border border-gray-100">
+                    <div><p class="text-[10px] text-gray-400 uppercase font-black">Mode</p><p id="detailPaymentMode" class="font-bold text-blue-600"></p></div>
+                    <div class="text-right"><p class="text-[10px] text-gray-400 uppercase font-black">Amount</p><p id="detailAmount" class="font-black text-2xl text-gray-800"></p></div>
+                </div>
+                <div id="assignActions" class="grid grid-cols-2 gap-3">
+                    <button onclick="window.callCustomer()" class="bg-green-600 text-white py-4 rounded-2xl font-black shadow-lg shadow-green-100 active:scale-95 transition flex items-center justify-center"><i class="fas fa-phone mr-2"></i>Call</button>
+                    <button onclick="window.whatsappCustomer()" class="bg-emerald-500 text-white py-4 rounded-2xl font-black shadow-lg shadow-emerald-100 active:scale-95 transition flex items-center justify-center"><i class="fab fa-whatsapp mr-2"></i>WhatsApp</button>
+                </div>
+                <div id="todayActions" class="space-y-4">
+                    <div class="grid grid-cols-2 gap-3">
+                        <button onclick="window.callCustomer()" class="bg-green-600 text-white py-4 rounded-2xl font-black shadow-lg active:scale-95 transition flex items-center justify-center"><i class="fas fa-phone mr-2"></i>Call</button>
+                        <a id="detailMapLinkBtn" href="#" target="_blank" class="bg-blue-600 text-white py-4 rounded-2xl font-black shadow-lg active:scale-95 transition text-center flex items-center justify-center"><i class="fas fa-location-arrow mr-2"></i>Map</a>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3 pt-4 border-t">
+                        <button id="detailPickupBtn" onclick="window.pickupCurrentOrder()" class="bg-orange-500 text-white py-5 rounded-2xl font-black disabled:bg-gray-100 transition active:scale-95">Pickup</button>
+                        <button id="detailDeliveryBtn" onclick="window.deliverCurrentOrder()" class="bg-emerald-600 text-white py-5 rounded-2xl font-black disabled:bg-gray-100 transition active:scale-95">Mark Delivered</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed bottom-6 right-6 bg-green-600 text-white px-6 py-4 rounded-2xl shadow-2xl z-[200] transition-all transform translate-y-20 opacity-0 pointer-events-none font-bold">
+        <span id="toastMessage"></span>
+    </div>
+
+    <!-- Firebase SDK & App Logic -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, doc, setDoc, addDoc, updateDoc, deleteDoc, onSnapshot, query, where, orderBy } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, updateDoc, collection, onSnapshot, addDoc, deleteDoc, getDocs, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // --- Configuration ---
-        const providedConfig = {
+        const firebaseConfig = {
             apiKey: "AIzaSyChCQIDBXdtEoJZPBrJxDQWB8bVobZiBRQ",
             authDomain: "gurudeliverysystem.firebaseapp.com",
             projectId: "gurudeliverysystem",
@@ -105,578 +386,406 @@
             measurementId: "G-W19WCFKBFG"
         };
 
-        const firebaseConfig = typeof __firebase_config !== 'undefined' && __firebase_config ? JSON.parse(__firebase_config) : providedConfig;
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'guru-delivery-system-v1';
-        
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
+        const appId = "gurudeliverysystem-prod";
 
-        // --- Central State ---
-        let state = {
-            user: null,
-            currentView: 'customers',
-            customers: [],
-            deliveries: [],
-            drivers: [],
-            customerVisibleCount: 10,
-            editingCustomer: null,
-            editingDriverIndex: null,
-            activeTodayDriver: null,
-            performanceFilter: { driver: 'All', fromDate: '', toDate: '' },
-            topCustomerFilter: { fromDate: '', toDate: '', customerId: '' },
-            listenersStarted: false,
-            initialLoadCount: 0
-        };
+        // Global State
+        window.customers = [];
+        window.drivers = [];
+        window.deliveries = [];
+        window.user = null;
+        window.currentDetailDeliveryIndex = -1;
+        window.selectedDriverFilter = null;
 
-        const menuItems = [
-            { id: 'customers', label: 'Customer Data', icon: 'users' },
-            { id: 'assign', label: 'Assign', icon: 'truck' },
-            { id: 'past', label: 'Past Orders', icon: 'history' },
-            { id: 'top_customers', label: 'Top Customers', icon: 'award' },
-            { id: 'settings', label: 'Settings', icon: 'settings' },
-            { id: 'today', label: 'Today Delivery', icon: 'calendar', special: true },
-            { id: 'my_performance', label: 'My Performance', icon: 'user-check', special: true }
-        ];
-
-        // --- FUNCTION DECLARATIONS (Hoisted) ---
-
-        function formatDuration(ms) {
-            if (!ms || ms < 0) return "N/A";
-            const minutes = Math.floor(ms / 60000);
-            if (minutes < 60) return `${minutes}m`;
-            const hours = Math.floor(minutes / 60);
-            return `${hours}h ${minutes % 60}m`;
+        // --- Hoisted Logic Functions ---
+        function formatTimer(startISO, endISO) {
+            if (!startISO) return "00:00:00";
+            const s = new Date(startISO), e = endISO ? new Date(endISO) : new Date();
+            const diff = Math.floor((e - s) / 1000);
+            if (diff < 0) return "00:00:00";
+            const h = Math.floor(diff / 3600), m = Math.floor((diff % 3600) / 60), sec = diff % 60;
+            return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
         }
 
-        function formatTime(ts) {
-            return ts ? new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true }) : "-";
+        function showToast(msg, type) {
+            const toast = document.getElementById('toast');
+            const msgEl = document.getElementById('toastMessage');
+            if (!toast || !msgEl) return;
+            toast.className = `fixed bottom-6 right-6 ${type === 'error' ? 'bg-red-600' : 'bg-green-600'} text-white px-6 py-4 rounded-2xl shadow-2xl z-[200] transition-all transform translate-y-0 opacity-100 font-bold pointer-events-auto`;
+            msgEl.textContent = msg;
+            setTimeout(() => { toast.classList.add('translate-y-20', 'opacity-0'); toast.classList.replace('pointer-events-auto', 'pointer-events-none'); }, 3000);
         }
 
-        function showNotification(msg, type = 'success') {
-            const container = document.getElementById('notification-container');
-            if (!container) return;
-            const toast = document.createElement('div');
-            toast.className = `toast mb-3 p-4 rounded-xl shadow-lg border text-sm font-bold flex items-center gap-3 ${type === 'success' ? 'bg-emerald-50 border-emerald-100 text-emerald-700' : 'bg-rose-50 border-rose-100 text-rose-700'}`;
-            toast.innerHTML = `<i data-lucide="${type === 'success' ? 'check-circle' : 'alert-circle'}" class="w-4 h-4"></i> ${msg}`;
-            container.appendChild(toast);
-            lucide.createIcons();
-            setTimeout(() => toast.remove(), 3000);
-        }
-
-        function toggleSidebar() {
-            const sb = document.getElementById('sidebar');
-            const over = document.getElementById('sidebarOverlay');
-            if (!sb || !over) return;
-            const isOpen = !sb.classList.contains('-translate-x-full');
-            sb.classList.toggle('-translate-x-full', isOpen);
-            over.classList.toggle('hidden', isOpen);
-        }
-
-        function closeModal() {
-            const container = document.getElementById('modalContainer');
-            if (container) container.classList.add('hidden');
-        }
-
-        function openModal(html) {
-            const body = document.getElementById('modalBody');
-            const container = document.getElementById('modalContainer');
-            if (body && container) {
-                body.innerHTML = html;
-                container.classList.remove('hidden');
-                lucide.createIcons();
-            }
-        }
-
-        function checkInitialLoading() {
-            state.initialLoadCount++;
-            if (state.initialLoadCount >= 3) {
-                const overlay = document.getElementById('loadingOverlay');
-                if (overlay) overlay.classList.add('hidden');
-
-                const dot = document.getElementById('syncDot');
-                const text = document.getElementById('syncText');
-                const box = document.getElementById('syncIndicator');
-                if (dot) {
-                    dot.classList.remove('bg-orange-500', 'sync-pulse');
-                    dot.classList.add('bg-emerald-500');
-                }
-                if (text) {
-                    text.innerText = "Cloud Active";
-                    text.classList.add('text-emerald-600');
-                }
-                if (box) {
-                    box.classList.add('bg-emerald-50', 'border-emerald-100');
-                }
-                renderSidebar();
-                renderView();
-            }
-        }
-
-        function navigateTo(id) {
-            state.currentView = id;
-            const item = menuItems.find(m => m.id === id);
-            if (item) {
-                const titleEl = document.getElementById('viewTitle');
-                if (titleEl) titleEl.innerText = item.label;
-            }
-            renderSidebar();
-            renderView();
-            const sb = document.getElementById('sidebar');
-            if (sb && !sb.classList.contains('-translate-x-full')) toggleSidebar();
-            window.scrollTo(0, 0);
-        }
-
-        // --- RENDERERS ---
-
-        function renderSidebar() {
-            const nav = document.getElementById('navLinks');
-            if (!nav) return;
-            nav.innerHTML = menuItems.map(item => {
-                const isActive = state.currentView === item.id;
-                const activeCls = isActive ? (item.special ? 'bg-slate-900 text-white shadow-xl ring-2 ring-orange-500/20' : 'bg-orange-600 text-white shadow-lg shadow-orange-100')
-                                          : (item.special ? 'bg-slate-100 text-slate-700 hover:bg-slate-200' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900');
-                return `<button onclick="window.navigateTo('${item.id}')" class="w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-200 ${activeCls}"><i data-lucide="${item.icon}" class="w-5 h-5"></i><span class="font-bold text-sm">${item.label}</span></button>`;
-            }).join('');
-            lucide.createIcons();
-        }
-
-        function renderView() {
-            const container = document.getElementById('viewContent');
-            if(!container) return;
-            container.innerHTML = '';
-            switch (state.currentView) {
-                case 'customers': renderCustomerSection(container); break;
-                case 'assign': renderAssignSection(container); break;
-                case 'past': renderPastSection(container); break;
-                case 'top_customers': renderTopCustomersSection(container); break;
-                case 'settings': renderSettingsSection(container); break;
-                case 'today': renderTodaySection(container); break;
-                case 'my_performance': renderMyPerformanceSection(container); break;
-            }
-            lucide.createIcons();
-        }
-
-        function renderCustomerSection(container) {
-            container.innerHTML = `
-                <div class="grid grid-cols-1 xl:grid-cols-3 gap-6 animate-in fade-in slide-in-from-bottom-2">
-                    <div class="xl:col-span-1">
-                        <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm sticky top-24">
-                            <h3 class="text-lg font-bold text-slate-900 mb-6 flex items-center gap-2 uppercase tracking-tight"><i data-lucide="${state.editingCustomer ? 'edit-2' : 'user-plus'}" class="${state.editingCustomer ? 'text-blue-600' : 'text-orange-600'}"></i>${state.editingCustomer ? 'Edit Entry' : 'Add Customer'}</h3>
-                            <form id="customerForm" class="space-y-4">
-                                <div class="grid grid-cols-2 gap-4">
-                                    <div><label class="text-[10px] font-bold text-slate-400 uppercase mb-1 block">Cust ID</label><input type="text" id="c_id" class="w-full px-4 py-2 border border-slate-200 rounded-xl text-sm" value="${state.editingCustomer ? state.editingCustomer.id : ''}"></div>
-                                    <div><label class="text-[10px] font-bold text-slate-400 uppercase mb-1 block">Full Name</label><input type="text" id="c_name" class="w-full px-4 py-2 border border-slate-200 rounded-xl text-sm" value="${state.editingCustomer ? state.editingCustomer.name : ''}"></div>
-                                </div>
-                                <div class="grid grid-cols-2 gap-4">
-                                    <div><label class="text-[10px] font-bold text-slate-400 uppercase mb-1 block">Phone 1</label><input type="text" id="c_p1" class="w-full px-4 py-2 border border-slate-200 rounded-xl text-sm" value="${state.editingCustomer ? state.editingCustomer.primaryPhone : ''}"></div>
-                                    <div><label class="text-[10px] font-bold text-slate-400 uppercase mb-1 block">Phone 2</label><input type="text" id="c_p2" class="w-full px-4 py-2 border border-slate-200 rounded-xl text-sm" value="${state.editingCustomer ? state.editingCustomer.alternatePhone : ''}"></div>
-                                </div>
-                                <div><label class="text-[10px] font-bold text-slate-400 uppercase mb-1 block">Address</label><textarea id="c_addr" class="w-full px-4 py-2 border border-slate-200 rounded-xl text-sm" rows="2">${state.editingCustomer ? state.editingCustomer.address : ''}</textarea></div>
-                                <div><label class="text-[10px] font-bold text-slate-400 uppercase mb-1 block">Maps URL</label><input type="text" id="c_link" class="w-full px-4 py-2 border border-slate-200 rounded-xl text-sm" value="${state.editingCustomer ? state.editingCustomer.addressLink : ''}"></div>
-                                <div class="flex gap-2">
-                                    <button type="submit" class="flex-1 ${state.editingCustomer ? 'bg-blue-600' : 'bg-orange-600'} text-white py-3 rounded-xl font-bold shadow-lg uppercase text-xs">${state.editingCustomer ? 'Update' : 'Save Entry'}</button>
-                                    ${state.editingCustomer ? `<button type="button" onclick="window.cancelCustomerEdit()" class="px-4 bg-slate-100 text-slate-500 rounded-xl font-bold text-xs uppercase">Cancel</button>` : ''}
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-                    <div class="xl:col-span-2 space-y-4">
-                        <div class="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex items-center gap-3"><i data-lucide="search" class="text-slate-400"></i><input type="text" id="customerSearch" oninput="window.renderCustomerList()" placeholder="Search Name, ID or Phone..." class="flex-1 bg-transparent border-none outline-none text-sm"></div>
-                        <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-                            <table class="w-full text-left">
-                                <thead class="bg-slate-50 border-b border-slate-100"><tr><th class="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Customer</th><th class="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Contact</th><th class="px-6 py-4 text-[10px] font-black text-slate-400 uppercase text-right tracking-widest">Actions</th></tr></thead>
-                                <tbody id="customerTableBody" class="divide-y divide-slate-100"></tbody>
-                            </table>
-                            <div id="showMoreContainer" class="p-4 border-t border-slate-100 text-center hidden"><button onclick="state.customerVisibleCount += 10; window.renderCustomerList()" class="text-xs font-black text-orange-600 uppercase tracking-widest hover:underline">Show More</button></div>
-                        </div>
-                    </div>
-                </div>
-            `;
-            renderCustomerListInternal();
-        }
-
-        function renderCustomerListInternal() {
-            const queryVal = document.getElementById('customerSearch')?.value.toLowerCase() || '';
-            const filtered = state.customers.filter(c => c.name.toLowerCase().includes(queryVal) || c.id.toLowerCase().includes(queryVal) || (c.primaryPhone && c.primaryPhone.includes(queryVal)));
+        function renderCustomerTable() {
             const tbody = document.getElementById('customerTableBody');
-            if(!tbody) return;
-            tbody.innerHTML = filtered.slice(0, state.customerVisibleCount).map(c => `
-                <tr onclick="window.showCustomerDetails('${c.firebaseId}')" class="hover:bg-slate-50/50 cursor-pointer">
-                    <td class="px-6 py-4 font-bold text-slate-800">${c.name}<br><span class="text-[10px] text-slate-400 uppercase font-black tracking-widest">ID: ${c.id}</span></td>
-                    <td class="px-6 py-4 text-xs text-slate-500 font-medium">${c.primaryPhone}</td>
-                    <td class="px-6 py-4 text-right" onclick="event.stopPropagation()">
-                        <div class="flex justify-end gap-1"><button onclick="window.editCustomer('${c.firebaseId}')" class="p-2 text-slate-400 hover:text-blue-600"><i data-lucide="edit-2" class="w-4 h-4"></i></button><button onclick="window.deleteCustomer('${c.firebaseId}')" class="p-2 text-slate-400 hover:text-rose-600"><i data-lucide="trash-2" class="w-4 h-4"></i></button></div>
+            if (!tbody) return;
+            tbody.innerHTML = window.customers.map((c, i) => `
+                <tr class="hover:bg-blue-50/50">
+                    <td class="px-5 py-4 font-mono text-[10px] font-bold text-gray-400">${c.id}</td>
+                    <td class="px-5 py-4 font-bold text-gray-800">${c.name}</td>
+                    <td class="px-5 py-4 text-xs font-semibold text-gray-500">+91 ${c.phone}</td>
+                    <td class="px-5 py-4 text-xs text-gray-400 truncate max-w-[200px]">${c.address}</td>
+                    <td class="px-5 py-4 text-center">${c.mapLink ? `<a href="${c.mapLink}" target="_blank" class="text-green-500 transition hover:scale-125"><i class="fas fa-map-marker-alt"></i></a>` : '-'}</td>
+                    <td class="px-5 py-4 text-center">
+                        <button onclick="window.openCustomerModal(${i})" class="text-blue-500 p-2 rounded-lg hover:bg-blue-50 transition"><i class="fas fa-edit"></i></button>
+                        <button onclick="window.deleteCustomer('${c.firebaseId}')" class="text-red-400 p-2 ml-1 hover:text-red-600 transition"><i class="fas fa-trash-alt"></i></button>
                     </td>
-                </tr>
-            `).join('');
-            const showMore = document.getElementById('showMoreContainer');
-            if (showMore) showMore.classList.toggle('hidden', filtered.length <= state.customerVisibleCount);
-            lucide.createIcons();
+                </tr>`).join('') || '<tr><td colspan="6" class="text-center py-20 text-gray-300 italic">No customers yet</td></tr>';
+            document.getElementById('customerCount').textContent = window.customers.length + ' customers';
         }
 
-        function renderAssignSection(container) {
-            const pending = state.deliveries.filter(d => d.status === 'Pending' || d.status === 'Picked Up');
-            container.innerHTML = `
-                <div class="space-y-6 animate-in fade-in">
-                    <div class="flex justify-end"><button onclick="window.openAssignModal()" class="bg-orange-600 text-white w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg hover:scale-105 transition-transform"><i data-lucide="plus"></i></button></div>
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        ${pending.length === 0 ? `<div class="col-span-full py-20 text-center text-slate-400 border-2 border-dashed rounded-3xl font-bold italic">No active tasks.</div>` : 
-                        pending.map(d => `
-                            <div onclick="window.showOrderAssignment('${d.firebaseId}')" class="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm border-t-4 border-t-orange-500 relative cursor-pointer hover:shadow-md transition-all">
-                                <button onclick="event.stopPropagation(); window.deleteOrder('${d.firebaseId}')" class="absolute top-4 right-4 p-1 bg-slate-50 text-slate-400 hover:text-rose-600 rounded transition-colors"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
-                                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">#${d.id} • ${d.time}</p>
-                                <h4 class="text-slate-900 font-black text-lg mt-1">${d.customerName}</h4>
-                                <div class="flex flex-wrap gap-2 mt-2">
-                                   <span class="bg-slate-100 px-2 py-0.5 rounded text-[10px] font-bold text-slate-500 uppercase italic">Driver: ${d.driver}</span>
-                                   <span class="bg-orange-50 px-2 py-0.5 rounded text-[10px] font-bold text-orange-600 uppercase">₹${d.amount} • ${d.paymentMode}</span>
-                                </div>
-                            </div>
-                        `).join('')}
-                    </div>
-                </div>
-            `;
-            lucide.createIcons();
+        function renderDriverTable() {
+            const tbody = document.getElementById('driverTableBody');
+            if (!tbody) return;
+            tbody.innerHTML = window.drivers.map((d) => `
+                <tr>
+                    <td class="px-5 py-4 font-bold text-gray-800">${d.name}</td>
+                    <td class="px-5 py-4 text-gray-500 font-medium">+91 ${d.phone}</td>
+                    <td class="px-5 py-4 text-center">
+                        <button onclick="window.deleteDriver('${d.firebaseId}')" class="text-red-500 p-2 transition hover:scale-110"><i class="fas fa-trash-alt"></i></button>
+                    </td>
+                </tr>`).join('') || '<tr><td colspan="3" class="text-center py-10 text-gray-300 italic">Add drivers above</td></tr>';
         }
 
-        function renderPastSection(container) {
-            container.innerHTML = `
-                <div class="space-y-6 animate-in fade-in">
-                    <div class="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex flex-wrap gap-4 items-end">
-                        <div class="flex-1 min-w-[140px]"><label class="text-[10px] font-black text-slate-400 uppercase block mb-1 tracking-widest">From</label><input type="date" id="p_from" onchange="window.renderPastOrdersList()" class="w-full text-xs border border-slate-200 rounded-lg p-2 outline-none"></div>
-                        <div class="flex-1 min-w-[140px]"><label class="text-[10px] font-black text-slate-400 uppercase block mb-1 tracking-widest">To</label><input type="date" id="p_to" onchange="window.renderPastOrdersList()" class="w-full text-xs border border-slate-200 rounded-lg p-2 outline-none"></div>
-                        <div class="flex-1 min-w-[140px]"><label class="text-[10px] font-black text-slate-400 uppercase block mb-1 tracking-widest">Driver</label><select id="p_driver" onchange="window.renderPastOrdersList()" class="w-full text-xs border border-slate-200 rounded-lg p-2 outline-none"><option value="All">All</option>${state.drivers.map(d => `<option value="${d.name}">${d.name}</option>`).join('')}</select></div>
-                        <button onclick="window.resetPastFilters()" class="p-2.5 bg-slate-50 text-slate-400 rounded-lg hover:text-rose-600 transition-colors"><i data-lucide="x" class="w-4 h-4"></i></button>
+        function renderAssignCards() {
+            const container = document.getElementById('deliveryCardsContainer');
+            if (!container) return;
+            const active = window.deliveries.filter(d => d.status === 'pending');
+            container.innerHTML = active.map(d => {
+                const realIdx = window.deliveries.indexOf(d);
+                return `
+                <div class="delivery-card bg-white rounded-3xl shadow-sm border-l-[6px] border-purple-400 p-6 transition hover:shadow-lg" onclick="window.openDeliveryDetail(${realIdx}, 'assign')">
+                    <div class="flex justify-between items-start mb-4">
+                        <span class="font-mono text-[10px] font-black text-gray-300 uppercase tracking-widest">${d.id}</span>
+                        <span class="status-badge bg-purple-50 text-purple-600 uppercase tracking-widest text-[8px]">ASSIGNED</span>
                     </div>
-                    <div class="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
-                        <table class="w-full text-left">
-                            <thead class="bg-slate-50 border-b border-slate-100">
-                                <tr><th class="px-6 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest">Order</th><th class="px-6 py-4 text-center text-[10px] font-black uppercase text-slate-400 tracking-widest">Personnel</th><th class="px-6 py-4 text-right text-[10px] font-black uppercase text-slate-400 tracking-widest">Amount</th></tr>
-                            </thead>
-                            <tbody id="pastOrdersBody" class="divide-y divide-slate-100"></tbody>
-                        </table>
+                    <p class="font-black text-gray-800 text-lg leading-tight mb-4">${d.customerName}</p>
+                    <div class="flex justify-between items-center pt-4 border-t border-gray-50">
+                        <span class="font-black text-gray-800">₹${d.amount}</span>
+                        <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">${d.driverName}</span>
                     </div>
-                </div>
-            `;
-            renderPastOrdersListInternal();
+                </div>`;}).join('') || '<div class="col-span-full text-center py-20 text-gray-300 italic">No pending tasks</div>';
         }
 
-        function renderPastOrdersListInternal() {
-            const f = document.getElementById('p_from')?.value || '';
-            const t = document.getElementById('p_to')?.value || '';
-            const drv = document.getElementById('p_driver')?.value || 'All';
-            const filtered = state.deliveries.filter(d => d.status === 'Delivered' && (drv === 'All' || d.driver === drv) && ((f && t) ? (d.date >= f && d.date <= t) : true));
-            const body = document.getElementById('pastOrdersBody');
-            if(!body) return;
-            body.innerHTML = filtered.length === 0 ? '<tr><td colspan="3" class="p-12 text-center text-slate-300 italic font-medium">No matching records.</td></tr>' : filtered.map(o => `<tr onclick="window.showPastOrderDetail('${o.firebaseId}')" class="hover:bg-slate-50/50 cursor-pointer group transition-colors"><td class="px-6 py-4 font-black text-xs text-slate-700 tracking-tighter uppercase">${o.id}<br><span class="text-[10px] text-slate-400 font-bold">${o.date} • ${o.customerName}</span></td><td class="px-6 py-4 text-center"><span class="px-3 py-1 bg-slate-100 rounded-full text-[10px] font-black uppercase tracking-widest text-slate-500 italic font-medium">${o.driver}</span></td><td class="px-6 py-4 text-right font-black text-emerald-600 tracking-widest italic font-bold">₹${o.amount}</td></tr>`).join('');
-            lucide.createIcons();
+        function renderTodayCards() {
+            const container = document.getElementById('todayCardsContainer');
+            if (!container) return;
+            const today = new Date().toISOString().split('T')[0];
+            const todayAll = window.deliveries.filter(d => d.date === today && (window.selectedDriverFilter === null || d.driverName === window.selectedDriverFilter));
+            const filteredForDisplay = todayAll.filter(d => d.status !== 'delivered');
+            
+            container.innerHTML = filteredForDisplay.map(d => {
+                const realIdx = window.deliveries.indexOf(d);
+                return `
+                <div class="delivery-card bg-white rounded-3xl shadow-sm border-l-[6px] ${d.status === 'in-transit' ? 'border-orange-400' : 'border-blue-400'} p-6 transition hover:shadow-lg" onclick="window.openDeliveryDetail(${realIdx}, 'today')">
+                    <div class="flex justify-between items-start mb-4">
+                        <span class="font-mono text-[10px] font-black text-gray-300 uppercase tracking-widest">${d.id}</span>
+                        <span class="status-badge ${d.status === 'in-transit' ? 'bg-orange-50 text-orange-600' : 'bg-blue-50 text-blue-600'} text-[8px] uppercase tracking-widest">${d.status.toUpperCase()}</span>
+                    </div>
+                    <p class="font-black text-gray-800 text-lg leading-tight">${d.customerName}</p>
+                    <div class="${d.status === 'in-transit' ? 'mt-2' : 'hidden'}">
+                        <span class="timer-badge" data-timer-for="${d.id}">${window.formatTimer(d.pickupTime)}</span>
+                    </div>
+                    <div class="flex justify-between items-center pt-4 mt-4 border-t border-gray-50">
+                        <span class="font-black text-gray-800">₹${d.amount}</span>
+                        <button class="bg-amber-500 text-white px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition">Detail</button>
+                    </div>
+                </div>`;}).join('') || '<div class="col-span-full text-center py-20 text-gray-300 italic">All tasks cleared for today</div>';
+
+            document.getElementById('todayTotal').textContent = todayAll.length;
+            document.getElementById('todayPending').textContent = todayAll.filter(d => d.status === 'pending').length;
+            document.getElementById('todayInTransit').textContent = todayAll.filter(d => d.status === 'in-transit').length;
+            document.getElementById('todayCompleted').textContent = todayAll.filter(d => d.status === 'delivered').length;
         }
 
-        function renderTopCustomersSection(container) {
-            container.innerHTML = `
-                <div class="space-y-6 animate-in fade-in">
-                    <div class="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex flex-wrap gap-4 items-end">
-                        <div class="flex-1 min-w-[140px]"><label class="block text-[10px] font-black text-slate-400 uppercase block mb-1">From</label><input type="date" id="top_from" onchange="window.updateTopCustomers()" class="w-full text-xs border border-slate-200 rounded-lg p-2 outline-none"></div>
-                        <div class="flex-1 min-w-[140px]"><label class="block text-[10px] font-black text-slate-400 uppercase block mb-1">To</label><input type="date" id="top_to" onchange="window.updateTopCustomers()" class="w-full text-xs border border-slate-200 rounded-lg p-2 outline-none"></div>
-                        <div class="flex-1 min-w-[140px]"><label class="block text-[10px] font-black text-slate-400 uppercase block mb-1">ID Search</label><input type="text" id="top_cid" oninput="window.updateTopCustomers()" placeholder="Customer ID" class="w-full text-xs border border-slate-200 rounded-lg p-2 outline-none"></div>
-                        <button onclick="window.resetTopFilters()" class="p-2.5 bg-slate-50 text-slate-400 rounded-lg"><i data-lucide="refresh-cw" class="w-4 h-4"></i></button>
-                    </div>
-                    <div id="topCustomersDisplay" class="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden"></div>
-                </div>
-            `;
-            window.updateTopCustomers();
+        function renderPastOrders() {
+            const tbody = document.getElementById('pastOrdersTableBody');
+            if (!tbody) return;
+            const past = window.deliveries.filter(d => d.status === 'delivered' || d.status === 'cancelled');
+            tbody.innerHTML = past.slice().reverse().map(d => {
+                const pTime = d.pickupTime ? new Date(d.pickupTime).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit', hour12: true}) : '-';
+                const dTime = d.deliveryTime ? new Date(d.deliveryTime).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit', hour12: true}) : '-';
+                return `
+                <tr>
+                    <td class="px-5 py-4 font-mono text-[10px] font-bold text-gray-300">${d.id}</td>
+                    <td class="px-5 py-4 font-bold text-gray-800">${d.customerName}</td>
+                    <td class="px-5 py-4 text-gray-400 font-medium">${d.driverName}</td>
+                    <td class="px-5 py-4 text-xs text-gray-400 font-bold uppercase tracking-tighter">${d.date}</td>
+                    <td class="px-5 py-4 text-xs font-bold text-orange-400">${pTime}</td>
+                    <td class="px-5 py-4 text-xs font-bold text-emerald-500">${dTime}</td>
+                    <td class="px-5 py-4 font-mono text-xs font-bold text-blue-600">${d.totalTimeTaken || '-'}</td>
+                    <td class="px-5 py-4"><span class="status-badge ${d.status==='delivered'?'bg-green-100 text-green-700':'bg-red-100 text-red-700'}">${d.status.toUpperCase()}</span></td>
+                </tr>`;}).join('') || '<tr><td colspan="8" class="text-center py-20 text-gray-300 italic">History empty</td></tr>';
+            document.getElementById('pastOrderCount').textContent = past.length + ' orders';
         }
 
-        function renderTodaySection(container) {
-            if (!state.activeTodayDriver && state.drivers.length > 0) state.activeTodayDriver = state.drivers[0].name;
-            const activeTasks = state.deliveries.filter(d => (d.status === 'Pending' || d.status === 'Picked Up') && d.driver === state.activeTodayDriver);
-            container.innerHTML = `
-                <div class="space-y-6 animate-in fade-in">
-                    <div class="flex flex-wrap gap-2 p-1 bg-slate-200/50 rounded-2xl w-fit">
-                        ${state.drivers.map(d => `<button onclick="window.toggleTodayDriver('${d.name}')" class="px-6 py-2 rounded-xl text-xs font-black uppercase transition-all ${state.activeTodayDriver === d.name ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:bg-slate-100'}">${d.name}</button>`).join('')}
-                    </div>
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        ${activeTasks.length === 0 ? `<div class="col-span-full py-20 text-center text-slate-300 font-bold bg-white border border-slate-100 rounded-3xl">No tasks assigned to ${state.activeTodayDriver || 'anyone'}.</div>` : 
-                        activeTasks.map(d => `
-                            <div class="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm hover:border-orange-200 transition-all">
-                                <div class="flex justify-between items-start mb-3"><span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">#${d.id} • ${d.time}</span><span class="px-2 py-0.5 bg-orange-100 text-orange-600 text-[10px] font-black uppercase rounded">${d.status}</span></div>
-                                <h4 class="font-black text-slate-900 text-lg mb-1">${d.customerName}</h4>
-                                <p class="text-[10px] font-black text-slate-400 uppercase mb-4 italic tracking-widest text-orange-500">Personnel: ${d.driver}</p>
-                                <button onclick="window.showTaskDetails('${d.firebaseId}')" class="w-full bg-slate-900 text-white py-3 rounded-xl text-xs font-black shadow-lg uppercase tracking-widest">Open Hub</button>
-                            </div>
-                        `).join('')}
-                    </div>
-                </div>
-            `;
-            lucide.createIcons();
+        function setDriverFilter(n) {
+            window.selectedDriverFilter = n;
+            window.renderDriverToggles();
+            window.renderTodayCards();
         }
 
-        function renderMyPerformanceSection(container) {
-            container.innerHTML = `
-                <div class="space-y-6 animate-in fade-in">
-                    <div class="bg-slate-900 p-6 rounded-3xl shadow-xl flex flex-wrap gap-4 items-end border border-slate-800">
-                        <div class="flex-1 min-w-[180px]"><label class="text-[10px] font-black text-slate-500 uppercase block mb-2 tracking-widest">Select Persona</label><select id="perf_driver" onchange="window.updateMyPerformance()" class="w-full text-sm bg-slate-800 text-white rounded-xl p-3 outline-none ring-1 ring-slate-700 focus:ring-orange-500 transition-all"><option value="All">All Partners</option>${state.drivers.map(d => `<option value="${d.name}">${d.name}</option>`).join('')}</select></div>
-                        <div class="flex-1 min-w-[140px]"><label class="text-[10px] font-black text-slate-500 uppercase block mb-2 tracking-widest">From Date</label><input type="date" id="perf_from" onchange="window.updateMyPerformance()" class="w-full text-sm bg-slate-800 text-white rounded-xl p-3 outline-none ring-1 ring-slate-700"></div>
-                        <div class="flex-1 min-w-[140px]"><label class="text-[10px] font-black text-slate-500 uppercase block mb-2 tracking-widest">To Date</label><input type="date" id="perf_to" onchange="window.updateMyPerformance()" class="w-full text-sm bg-slate-800 text-white rounded-xl p-3 outline-none ring-1 ring-slate-700"></div>
-                    </div>
-                    <div id="perfMetrics" class="grid grid-cols-1 sm:grid-cols-2 gap-6"></div>
-                    <div class="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden"><div class="p-6 border-b border-slate-100 font-black uppercase text-xs text-slate-400 tracking-widest">Personal Log</div><div class="overflow-x-auto"><table class="w-full text-left"><thead class="bg-slate-50 border-b border-slate-100"><tr><th class="px-6 py-4 text-[10px] font-black uppercase tracking-widest">Order</th><th class="px-6 py-4 text-center text-[10px] font-black uppercase tracking-widest">Picked Up</th><th class="px-6 py-4 text-center text-[10px] font-black uppercase tracking-widest">Delivered</th><th class="px-6 py-4 text-right text-[10px] font-black uppercase tracking-widest">Trip</th></tr></thead><tbody id="perfLogBody" class="divide-y divide-slate-100"></tbody></table></div></div>
-                </div>
-            `;
-            window.updateMyPerformance();
+        function renderDriverToggles() {
+            const container = document.getElementById('driverFilterToggle');
+            if (!container) return;
+            container.innerHTML = window.drivers.map(d => `<button onclick="window.setDriverFilter('${d.name}')" class="px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest border transition ${window.selectedDriverFilter === d.name ? 'bg-amber-500 text-white border-amber-600 shadow-lg scale-105' : 'bg-white text-gray-500 border-gray-200 hover:bg-gray-50'}">${d.name}</button>`).join('');
+            if(!window.selectedDriverFilter && window.drivers.length > 0) window.setDriverFilter(window.drivers[0].name);
         }
 
-        function renderSettingsSection(container) {
-            container.innerHTML = `
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 animate-in fade-in">
-                    <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm h-fit">
-                        <h3 id="driverFormTitle" class="text-lg font-bold text-slate-900 mb-6 flex items-center gap-2 uppercase tracking-widest"><i data-lucide="user-plus" class="text-orange-600"></i>Register Personnel</h3>
-                        <form id="driverForm" class="space-y-4">
-                            <div><label class="text-xs font-bold text-slate-400 uppercase block mb-1">Name</label><input type="text" id="d_name" class="w-full px-4 py-2 border rounded-xl text-sm outline-none focus:ring-2 focus:ring-orange-500/20"></div>
-                            <div><label class="text-xs font-bold text-slate-400 uppercase block mb-1">Mobile</label><input type="text" id="d_phone" class="w-full px-4 py-2 border rounded-xl text-sm outline-none focus:ring-2 focus:ring-orange-500/20"></div>
-                            <div><label class="text-xs font-bold text-slate-400 uppercase block mb-1">Tracking Link</label><input type="text" id="d_link" placeholder="Map tracking URL" class="w-full px-4 py-2 border rounded-xl text-sm outline-none"></div>
-                            <div class="flex gap-2">
-                                <button type="submit" id="driverBtn" class="flex-1 bg-slate-900 text-white py-3 rounded-xl font-bold hover:bg-orange-600 transition-colors uppercase text-xs shadow-lg">Register Partner</button>
-                                <button type="button" id="cancelDriverBtn" onclick="window.resetDriverForm()" class="px-4 bg-slate-100 text-slate-500 rounded-xl font-bold text-xs hidden">Cancel</button>
-                            </div>
-                        </form>
-                    </div>
-                    <div class="bg-white rounded-2xl border border-slate-100 shadow-sm h-fit"><div class="p-6 border-b border-slate-100 font-black uppercase text-xs text-slate-400 tracking-widest">Active Roster</div><div id="driverList" class="divide-y divide-slate-100"></div></div>
-                </div>
-            `;
-            document.getElementById('driverForm').onsubmit = (e) => {
-                e.preventDefault();
-                window.saveDriver({ name: document.getElementById('d_name').value, phone: document.getElementById('d_phone').value, addressLink: document.getElementById('d_link').value });
-            };
-            window.renderDriverList();
+        function renderPerformance() {
+            const f = document.getElementById('perfFromDate').value, t = document.getElementById('perfToDate').value, dr = document.getElementById('perfDriverSelect').value;
+            let filtered = window.deliveries.filter(d => d.status === 'delivered');
+            if(f) filtered = filtered.filter(d => d.date >= f); if(t) filtered = filtered.filter(d => d.date <= t); if(dr!=='All') filtered = filtered.filter(d => d.driverName === dr);
+            
+            const totalEl = document.getElementById('perfTotalDelivered');
+            if (totalEl) totalEl.textContent = filtered.length;
+
+            let totalSec = 0; filtered.forEach(d => { if(d.pickupTime && d.deliveryTime) totalSec += Math.floor((new Date(d.deliveryTime) - new Date(d.pickupTime))/1000); });
+            const avgSec = filtered.length > 0 ? Math.floor(totalSec / filtered.length) : 0;
+            const avgEl = document.getElementById('perfAvgTime');
+            if (avgEl) avgEl.textContent = `${String(Math.floor(avgSec/60)).padStart(2,'0')}:${String(avgSec%60).padStart(2,'0')}`;
+
+            const ags = {}; filtered.forEach(d => { if(!ags[d.driverName]) ags[d.driverName] = { c:0, s:0 }; ags[d.driverName].c++; if(d.pickupTime&&d.deliveryTime) ags[d.driverName].s += Math.floor((new Date(d.deliveryTime)-new Date(d.pickupTime))/1000); });
+            const listEl = document.getElementById('perfAgentList');
+            if (listEl) listEl.innerHTML = Object.entries(ags).map(([n, data]) => `<div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex justify-between items-center transition hover:shadow-md"><div><p class="font-black text-gray-800 leading-tight">${n}</p><p class="text-[10px] font-bold text-gray-400 mt-1 uppercase tracking-widest">Avg Speed: ${Math.floor(data.s/data.count/60)}m/task</p></div><div class="text-right"><p class="text-3xl font-black text-blue-600">${data.c}</p><p class="text-[8px] font-black text-gray-400 uppercase tracking-widest">Completed</p></div></div>`).join('');
         }
 
-        // --- EXPOSE GLOBALS ---
-        window.toggleSidebar = toggleSidebar;
-        window.closeModal = closeModal;
-        window.openModal = openModal;
-        window.navigateTo = navigateTo;
-        window.checkInitialLoading = checkInitialLoading;
+        function renderAnalysis() {
+            const del = window.deliveries.filter(d => d.status === 'delivered');
+            const rev = del.reduce((s, d) => s + parseFloat(d.amount || 0), 0);
+            const revEl = document.getElementById('analysisRevenue');
+            if (revEl) revEl.textContent = '₹' + rev.toLocaleString();
+            const avgEl = document.getElementById('analysisAvgOrder');
+            if (avgEl) avgEl.textContent = '₹' + (del.length > 0 ? (rev/del.length).toFixed(0) : 0);
+            const rateEl = document.getElementById('analysisSuccessRate');
+            if (rateEl) rateEl.textContent = (window.deliveries.length > 0 ? Math.round((del.length/window.deliveries.length)*100) : 0) + '%';
+        }
 
-        window.saveCustomer = async (data) => {
-            if (!state.user) return;
+        function updatePerfDriverSelect() {
+            const sel = document.getElementById('perfDriverSelect');
+            if(!sel) return;
+            const cur = sel.value;
+            sel.innerHTML = '<option value="All">All Drivers</option>' + window.drivers.map(d => `<option value="${d.name}">${d.name}</option>`).join('');
+            sel.value = cur || 'All';
+        }
+
+        // --- Interface Assignments ---
+        window.formatTimer = formatTimer;
+        window.showToast = showToast;
+        window.renderCustomerTable = renderCustomerTable;
+        window.renderDriverTable = renderDriverTable;
+        window.renderAssignCards = renderAssignCards;
+        window.renderTodayCards = renderTodayCards;
+        window.renderPastOrders = renderPastOrders;
+        window.setDriverFilter = setDriverFilter;
+        window.renderDriverToggles = renderDriverToggles;
+        window.renderPerformance = renderPerformance;
+        window.renderAnalysis = renderAnalysis;
+        window.updatePerfDriverSelect = updatePerfDriverSelect;
+
+        window.openSidebar = () => {
+            document.getElementById('sidebar').classList.remove('hidden-sidebar');
+            document.getElementById('sidebarOverlay').classList.remove('hidden-overlay');
+        };
+        window.closeSidebar = () => {
+            document.getElementById('sidebar').classList.add('hidden-sidebar');
+            document.getElementById('sidebarOverlay').classList.add('hidden-overlay');
+        };
+
+        window.switchSection = (sectionId, navEl) => {
+            document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active','bg-slate-800','text-white'));
+            const target = document.getElementById(sectionId);
+            if (target) target.classList.add('active');
+            if (navEl) navEl.classList.add('active', 'bg-slate-800', 'text-white');
+            
+            const titles = { 'add-customer': ['Add Customer', 'Database'], 'assign-delivery': ['Assign', 'Tasks'], 'past-orders': ['Past Orders', 'History'], 'settings': ['Settings', 'Drivers'], 'analysis': ['Analysis', 'Trends'], 'today-delivery': ["Today's Delivery", 'Driver View'], 'performance': ['Performance', 'Efficiency'] };
+            const [title, subtitle] = titles[sectionId] || ['GURU System', 'Delivery Management'];
+            document.getElementById('pageTitle').textContent = title;
+            document.getElementById('pageSubtitle').textContent = subtitle;
+            
+            if (sectionId === 'today-delivery') renderTodayCards();
+            if (sectionId === 'performance') renderPerformance();
+            if (sectionId === 'analysis') renderAnalysis();
+            if (sectionId === 'past-orders') renderPastOrders();
+            window.closeSidebar();
+        };
+
+        window.openCustomerModal = (idx) => {
+            document.getElementById('customerModal').classList.remove('hidden');
+            document.getElementById('customerForm').reset();
+            if(idx !== undefined) {
+                const c = window.customers[idx];
+                document.getElementById('editIndex').value = idx;
+                document.getElementById('custId').value = c.id;
+                document.getElementById('custName').value = c.name;
+                document.getElementById('custPhone').value = c.phone;
+                document.getElementById('custAltPhone').value = c.altPhone || '';
+                document.getElementById('custAddress').value = c.address;
+                document.getElementById('custMapLink').value = c.mapLink || '';
+            } else document.getElementById('editIndex').value = -1;
+        };
+        window.closeCustomerModal = () => document.getElementById('customerModal').classList.add('hidden');
+
+        window.openAssignModal = () => {
+            document.getElementById('assignModal').classList.remove('hidden');
+            document.getElementById('assignDriver').innerHTML = window.drivers.map((d, i) => `<option value="${i}">${d.name}</option>`).join('');
+            document.getElementById('assignDate').valueAsDate = new Date();
+        };
+        window.closeAssignModal = () => document.getElementById('assignModal').classList.add('hidden');
+
+        window.openDeliveryDetail = (idx, context) => {
+            window.currentDetailDeliveryIndex = idx;
+            const d = window.deliveries[idx];
+            document.getElementById('detailOrderId').textContent = d.id;
+            document.getElementById('detailCustName').textContent = d.customerName;
+            document.getElementById('detailCustPhone').textContent = d.customerPhone;
+            document.getElementById('detailCustAddress').textContent = d.customerAddress;
+            document.getElementById('detailPaymentMode').textContent = d.payment;
+            document.getElementById('detailAmount').textContent = '₹' + d.amount;
+            document.getElementById('detailStatus').textContent = d.status.toUpperCase();
+            document.getElementById('detailStatus').className = `status-badge text-[9px] px-4 py-2 ${d.status==='delivered'?'bg-green-100 text-green-700':d.status==='in-transit'?'bg-orange-100 text-orange-700':'bg-blue-100 text-blue-600'}`;
+            
+            document.getElementById('assignActions').classList.toggle('hidden', context !== 'assign');
+            document.getElementById('todayActions').classList.toggle('hidden', context !== 'today');
+            
+            const mapBtn = document.getElementById('detailMapLinkBtn');
+            if (mapBtn) { mapBtn.href = d.customerMapLink || '#'; mapBtn.style.opacity = d.customerMapLink ? '1' : '0.2'; }
+            
+            document.getElementById('detailPickupBtn').disabled = (d.status !== 'pending');
+            document.getElementById('detailDeliveryBtn').disabled = (d.status !== 'in-transit');
+            document.getElementById('deliveryDetailModal').classList.remove('hidden');
+        };
+        window.closeDetailModal = () => { document.getElementById('deliveryDetailModal').classList.add('hidden'); window.currentDetailDeliveryIndex = -1; };
+
+        // --- Data Ops ---
+        window.saveCustomer = async (e) => {
+            e.preventDefault();
+            const editIdx = parseInt(document.getElementById('editIndex').value);
+            const data = { id: document.getElementById('custId').value.trim(), name: document.getElementById('custName').value.trim(), phone: document.getElementById('custPhone').value.trim(), altPhone: document.getElementById('custAltPhone').value.trim(), address: document.getElementById('custAddress').value.trim(), mapLink: document.getElementById('custMapLink').value.trim(), updatedAt: new Date().toISOString() };
             try {
-                const coll = collection(db, 'artifacts', appId, 'public', 'data', 'customers');
-                if (state.editingCustomer) {
-                    await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'customers', state.editingCustomer.firebaseId), data);
-                    state.editingCustomer = null;
-                } else {
-                    await addDoc(coll, data);
-                }
-                showNotification("Customer Entry Saved!");
-                navigateTo('customers');
-            } catch (e) { showNotification("Save Error", "error"); }
+                if (editIdx >= 0) await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'customers', window.customers[editIdx].firebaseId), data);
+                else await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'customers'), data);
+                window.closeCustomerModal(); window.showToast("Customer Saved", "success");
+            } catch (err) { window.showToast("Sync Error", "error"); }
         };
 
-        window.deleteCustomer = async (fid) => {
-            if (!state.user) return;
-            if (confirm("Delete customer?")) {
-                try {
-                    await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'customers', fid));
-                    showNotification("Customer removed.");
-                } catch (e) { showNotification("Error deleting.", "error"); }
-            }
+        window.saveDriver = async (e) => {
+            e.preventDefault();
+            try {
+                await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'drivers'), { name: document.getElementById('driverName').value.trim(), phone: document.getElementById('driverPhone').value.trim(), trackingLink: document.getElementById('driverTrackingLink').value.trim() });
+                document.getElementById('driverForm').reset();
+                window.showToast("Driver Added", "success");
+            } catch (err) { window.showToast("Sync Error", "error"); }
         };
 
-        window.saveAssignment = async (data) => {
+        window.submitAssignment = async () => {
+            const custId = document.getElementById('selCustId').textContent;
+            const cust = window.customers.find(c => c.id === custId);
+            const driverIdx = document.getElementById('assignDriver').value;
+            const driver = window.drivers[driverIdx];
+            const data = { id: 'ORD-' + (Date.now() % 1000000), customerName: cust.name, customerPhone: cust.phone, customerAddress: cust.address, customerMapLink: cust.mapLink, driverName: driver.name, amount: document.getElementById('assignAmount').value, payment: document.querySelector('input[name="paymentMode"]:checked').value, date: document.getElementById('assignDate').value, status: 'pending', pickupTime: null, deliveryTime: null, totalTimeTaken: null };
             try {
                 await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'deliveries'), data);
-                showNotification("Task assigned!");
-                closeModal();
-            } catch (e) { showNotification("Failed to assign.", "error"); }
+                window.closeAssignModal(); window.showToast("Task Created", "success");
+            } catch (err) { window.showToast("Sync Error", "error"); }
         };
 
-        window.deleteOrder = (fid) => {
-            openModal(`
-                <div class="p-8 text-center space-y-6">
-                    <div class="w-16 h-16 bg-rose-50 text-rose-600 rounded-full flex items-center justify-center mx-auto mb-4"><i data-lucide="alert-triangle"></i></div>
-                    <h3 class="text-xl font-black uppercase">Are you sure?</h3>
-                    <p class="text-slate-500 text-sm">Delete this task permanently?</p>
-                    <div class="grid grid-cols-2 gap-3 pt-4">
-                        <button onclick="window.confirmDeleteOrder('${fid}')" class="bg-rose-600 text-white py-3 rounded-xl font-black uppercase text-xs">Delete</button>
-                        <button onclick="window.closeModal()" class="bg-slate-100 text-slate-500 py-3 rounded-xl font-black uppercase text-xs">Cancel</button>
-                    </div>
-                </div>
-            `);
-        };
-        window.confirmDeleteOrder = async (fid) => { await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'deliveries', fid)); closeModal(); };
-
-        window.updateDeliveryStatus = async (fid, status) => {
+        window.pickupCurrentOrder = async () => {
+            const d = window.deliveries[window.currentDetailDeliveryIndex];
             try {
-                const updates = { status };
-                if (status === 'Picked Up') updates.pickedUpAt = Date.now();
-                if (status === 'Delivered') updates.deliveredAt = Date.now();
-                await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'deliveries', fid), updates);
-                if (status === 'Delivered') closeModal(); else window.showTaskDetails(fid);
-                showNotification(`Order ${status}`);
-            } catch (e) { showNotification("Failed to update.", "error"); }
+                await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'deliveries', d.firebaseId), { status: 'in-transit', pickupTime: new Date().toISOString() });
+                window.showToast("Task Started!", "success");
+                window.openDeliveryDetail(window.currentDetailDeliveryIndex, 'today');
+            } catch (err) { window.showToast("Sync Error", "error"); }
         };
 
-        window.saveDriver = async (data) => {
+        window.deliverCurrentOrder = async () => {
+            const d = window.deliveries[window.currentDetailDeliveryIndex];
+            const now = new Date();
             try {
-                const coll = collection(db, 'artifacts', appId, 'public', 'data', 'drivers');
-                if (state.editingDriverIndex !== null) {
-                    await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'drivers', state.drivers[state.editingDriverIndex].firebaseId), data);
-                    state.editingDriverIndex = null;
-                } else {
-                    await addDoc(coll, data);
+                await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'deliveries', d.firebaseId), { status: 'delivered', deliveryTime: now.toISOString(), totalTimeTaken: window.formatTimer(d.pickupTime, now.toISOString()) });
+                window.closeDetailModal(); window.showToast("Delivered! 🎉", "success");
+            } catch (err) { window.showToast("Sync Error", "error"); }
+        };
+
+        window.whatsappCustomer = () => {
+            const d = window.deliveries[window.currentDetailDeliveryIndex];
+            const drv = window.drivers.find(dr => dr.name === d.driverName);
+            const msg = `Greetings from GURU! 🙏\n\nAssigned Driver: ${d.driverName}\nContact: +91 ${drv?.phone || 'N/A'}\nTracking: ${drv?.trackingLink || '-'}\n\nOrder value: ₹${d.amount}\nYour order will arrive shortly.`;
+            window.open(`https://wa.me/91${d.customerPhone}?text=${encodeURIComponent(msg)}`, '_blank');
+        };
+
+        window.searchCustomersForAssign = () => {
+            const q = document.getElementById('assignSearchInput').value.toLowerCase();
+            const res = document.getElementById('assignSearchResults');
+            if(!q){ res.classList.add('hidden'); return; }
+            const matches = window.customers.filter(c => c.name.toLowerCase().includes(q) || c.id.toLowerCase().includes(q));
+            res.innerHTML = matches.map(c => `<div class="p-4 hover:bg-gray-50 cursor-pointer font-bold text-sm" onclick="window.selectCustomerForAssign('${c.id}')">${c.name} <span class="text-[10px] text-gray-300 ml-2 font-mono">${c.id}</span></div>`).join('');
+            res.classList.remove('hidden');
+        };
+
+        window.selectCustomerForAssign = (id) => {
+            const c = window.customers.find(x => x.id === id);
+            document.getElementById('selCustId').textContent = c.id;
+            document.getElementById('selCustName').textContent = c.name;
+            document.getElementById('selectedCustomerCard').classList.remove('hidden');
+            document.getElementById('assignSearchResults').classList.add('hidden');
+            document.getElementById('assignSubmitBtn').disabled = false;
+        };
+
+        window.deleteCustomer = async (id) => { if(confirm('Delete customer?')) await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'customers', id)); };
+        window.deleteDriver = async (id) => { if(confirm('Delete driver?')) await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'drivers', id)); };
+        window.clearAllData = async () => { if(!confirm('ERASE EVERYTHING?')) return; const b = writeBatch(db); const cols = ['customers', 'drivers', 'deliveries']; for(let col of cols) { const s = await getDocs(collection(db, 'artifacts', appId, 'public', 'data', col)); s.forEach(d => b.delete(d.ref)); } await b.commit(); window.showToast("Cloud Wiped", "error"); };
+        window.updateTodayBadge = () => { const today = new Date().toISOString().split('T')[0]; const badge = document.getElementById('todayBadge'); if(badge) badge.textContent = window.deliveries.filter(d => d.date === today && d.status !== 'delivered').length; };
+        window.callCustomer = () => window.open('tel:+91' + window.deliveries[window.currentDetailDeliveryIndex].customerPhone, '_self');
+
+        // --- Firebase Init ---
+        signInAnonymously(auth).then(() => {
+            onAuthStateChanged(auth, (u) => {
+                window.user = u;
+                document.getElementById('authStatus').textContent = u ? "Cloud Connected" : "Connection Error";
+                if (u) {
+                    onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'customers'), (snap) => {
+                        window.customers = snap.docs.map(d => ({...d.data(), firebaseId: d.id}));
+                        renderCustomerTable();
+                    });
+                    onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'drivers'), (snap) => {
+                        window.drivers = snap.docs.map(d => ({...d.data(), firebaseId: d.id}));
+                        renderDriverTable();
+                        renderDriverToggles();
+                        updatePerfDriverSelect();
+                    });
+                    onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'deliveries'), (snap) => {
+                        window.deliveries = snap.docs.map(d => ({...d.data(), firebaseId: d.id}));
+                        renderAssignCards();
+                        renderTodayCards();
+                        renderPastOrders();
+                        updateTodayBadge();
+                        renderPerformance();
+                        renderAnalysis();
+                    });
                 }
-                showNotification("Partner settings updated.");
-                window.resetDriverForm();
-            } catch (e) { showNotification("Error saving partner.", "error"); }
-        };
-
-        window.removeDriver = async (fid) => { if(confirm('Delete?')) await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'drivers', fid)); };
-
-        window.renderCustomerList = renderCustomerListInternal;
-        window.renderPastOrdersList = renderPastOrdersListInternal;
-
-        window.updateTopCustomers = () => {
-            const f = document.getElementById('top_from')?.value || '';
-            const t = document.getElementById('top_to')?.value || '';
-            const cid = document.getElementById('top_cid')?.value?.toLowerCase() || '';
-            const filtered = state.deliveries.filter(d => {
-                const mid = cid ? d.customerId.toLowerCase().includes(cid) : true;
-                const mrange = (f && t) ? (d.date >= f && d.date <= t) : true;
-                return mid && mrange;
             });
-            const map = {};
-            filtered.forEach(d => { if(!map[d.customerId]) map[d.customerId] = { name: d.customerName, count: 0, total: 0 }; map[d.customerId].count++; map[d.customerId].total += Number(d.amount); });
-            const ranked = Object.entries(map).map(([id, data]) => ({ id, ...data })).sort((a,b) => b.count - a.count);
-            const dEl = document.getElementById('topCustomersDisplay');
-            if(dEl) dEl.innerHTML = `<div class="overflow-x-auto"><table class="w-full text-left"><thead class="bg-slate-50 border-b border-slate-100"><tr><th class="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Rank</th><th class="px-6 py-4 text-center text-[10px] font-black uppercase tracking-widest text-slate-400">Orders</th><th class="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Customer</th><th class="px-6 py-4 text-right text-[10px] font-black uppercase tracking-widest text-slate-400">Total Value</th></tr></thead><tbody class="divide-y divide-slate-100">${ranked.length === 0 ? '<tr><td colspan="4" class="p-12 text-center text-slate-300 font-medium italic">No records.</td></tr>' : ranked.map((c, i) => `<tr class="hover:bg-slate-50/50 transition-colors"><td class="px-6 py-4"><div class="w-7 h-7 flex items-center justify-center rounded-full font-black text-xs ${i === 0 ? 'bg-orange-500 text-white shadow-lg' : 'bg-slate-100'}">${i+1}</div></td><td class="px-6 py-4 text-center"><span class="px-3 py-1 rounded-full bg-blue-50 text-blue-600 text-xs font-black">${c.count}</span></td><td class="px-6 py-4 font-bold text-slate-800">${c.name}<br><span class="text-[9px] text-slate-400 uppercase font-black tracking-widest">ID: ${c.id}</span></td><td class="px-6 py-4 text-right font-black italic text-slate-900 tracking-widest">₹${c.total.toLocaleString()}</td></tr>`).join('')}</tbody></table></div>`;
-        };
+        });
 
-        window.updateMyPerformance = () => {
-            const drv = document.getElementById('perf_driver')?.value || 'All';
-            const f = document.getElementById('perf_from')?.value;
-            const t = document.getElementById('perf_to')?.value;
-            const filtered = state.deliveries.filter(d => (drv === 'All' || d.driver === drv) && ((f && t) ? (d.date >= f && d.date <= t) : true));
-            const deliv = filtered.filter(d => d.status === 'Delivered');
-            const totalMs = deliv.filter(d => d.deliveredAt && d.pickedUpAt).reduce((a,c) => a + (c.deliveredAt - c.pickedUpAt), 0);
-            const validCount = deliv.filter(d => d.deliveredAt && d.pickedUpAt).length;
-            const metrics = document.getElementById('perfMetrics');
-            if(metrics) metrics.innerHTML = `<div class="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm"><p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Delivered</p><h3 class="text-4xl font-black mt-2 text-slate-900">${deliv.length}</h3></div><div class="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm"><p class="text-[10px] font-black text-slate-400 uppercase tracking-widest text-blue-600">Avg Trip Time</p><h3 class="text-4xl font-black mt-2 text-blue-600">${window.formatDuration(validCount > 0 ? totalMs / validCount : 0)}</h3></div>`;
-            const logBody = document.getElementById('perfLogBody');
-            if(logBody) logBody.innerHTML = deliv.length === 0 ? '<tr><td colspan="4" class="p-12 text-center text-slate-300 font-medium tracking-tight italic">No activity logs found.</td></tr>' : deliv.map(o => `
-                <tr class="hover:bg-slate-50 transition-colors">
-                    <td class="px-6 py-4 font-black text-xs text-slate-700">${o.id}<br><span class="text-[9px] font-black text-slate-400 uppercase tracking-tighter">${o.customerName} • ${o.date}</span></td>
-                    <td class="px-6 py-4 text-center text-xs font-bold text-slate-500">${window.formatTime(o.pickedUpAt)}</td>
-                    <td class="px-6 py-4 text-center text-xs font-bold text-slate-500">${window.formatTime(o.deliveredAt)}</td>
-                    <td class="px-6 py-4 text-right font-black text-blue-600 italic text-xs tracking-tighter">${window.formatDuration(o.deliveredAt - o.pickedUpAt)}</td>
-                </tr>
-            `).join('');
-            lucide.createIcons();
-        };
-
-        window.renderDriverList = () => {
-            const list = document.getElementById('driverList');
-            if(!list) return;
-            list.innerHTML = state.drivers.map((d, i) => `<div class="flex items-center justify-between p-4 group transition-colors hover:bg-slate-50"><div class="flex items-center gap-3"><div class="w-10 h-10 bg-slate-100 text-slate-400 flex items-center justify-center rounded-lg font-black text-xs uppercase shadow-sm">${d.name.substring(0, 2)}</div><div><p class="font-bold text-sm text-slate-700">${d.name}</p><p class="text-[10px] text-slate-400 font-bold">${d.phone}</p></div></div><div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity"><button onclick="window.editDriver(${i})" class="p-2 text-slate-400 hover:text-blue-500 transition-colors"><i data-lucide="edit-2" class="w-4 h-4"></i></button><button onclick="window.removeDriver('${d.firebaseId}')" class="p-2 text-slate-400 hover:text-rose-600 transition-colors"><i data-lucide="trash-2" class="w-4 h-4"></i></button></div></div>`).join('');
-            lucide.createIcons();
-        };
-
-        window.resetDriverForm = () => {
-            state.editingDriverIndex = null;
-            ['d_name', 'd_phone', 'd_link'].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
-            const btn = document.getElementById('driverBtn');
-            const title = document.getElementById('driverFormTitle');
-            const cancel = document.getElementById('cancelDriverBtn');
-            if (btn) btn.innerText = 'Register Partner';
-            if (title) title.innerText = 'Register Personnel';
-            if (cancel) cancel.classList.add('hidden');
-        };
-
-        window.editDriver = (index) => {
-            state.editingDriverIndex = index;
-            const d = state.drivers[index];
-            document.getElementById('d_name').value = d.name;
-            document.getElementById('d_phone').value = d.phone;
-            document.getElementById('d_link').value = d.addressLink || '';
-            document.getElementById('driverBtn').innerText = 'Update Partner';
-            document.getElementById('driverFormTitle').innerText = 'Edit Partner';
-            const cancel = document.getElementById('cancelDriverBtn');
-            if (cancel) cancel.classList.remove('hidden');
-        };
-
-        window.toggleTodayDriver = (name) => { state.activeTodayDriver = name; renderView(); };
-        window.resetTopFilters = () => { state.topCustomerFilter = { fromDate: '', toDate: '', customerId: '' }; renderTopCustomersSection(document.getElementById('viewContent')); };
-        window.resetPastFilters = () => { if(document.getElementById('p_from')) document.getElementById('p_from').value = ''; if(document.getElementById('p_to')) document.getElementById('p_to').value = ''; if(document.getElementById('p_driver')) document.getElementById('p_driver').value = 'All'; window.renderPastOrdersList(); };
-        window.cancelCustomerEdit = () => { state.editingCustomer = null; navigateTo('customers'); };
-
-        window.searchCustomerForAssign = () => {
-            const queryVal = document.getElementById('assignSearch').value.toLowerCase();
-            const results = document.getElementById('assignSearchResults');
-            if (queryVal.length < 1) { results.innerHTML = ''; return; }
-            const filtered = state.customers.filter(c => c.name.toLowerCase().includes(queryVal) || c.id.toLowerCase().includes(queryVal));
-            results.innerHTML = filtered.map(c => `<button onclick="window.selectCustomerForAssign('${c.id}', '${c.name}')" class="w-full text-left p-3 border border-slate-100 rounded-xl hover:bg-slate-50 flex justify-between items-center transition-colors font-bold text-sm tracking-tighter"><span>${c.name}</span><span class="text-[10px] text-slate-400 uppercase tracking-widest font-black">#${c.id}</span></button>`).join('');
-        };
-
-        window.selectCustomerForAssign = (id, name) => {
-            document.getElementById('new_cid').value = id;
-            document.getElementById('new_cname').value = name;
-            document.getElementById('assignSearch').value = '';
-            document.getElementById('assignSearchResults').innerHTML = '';
-            const display = document.getElementById('selectedCustomerDisplay');
-            if (display) { display.innerText = "Selected: " + name; display.classList.remove('hidden'); }
-        };
-
-        // --- BACKEND LOGIC ---
-
-        function startListeners() {
-            const publicPath = (coll) => collection(db, 'artifacts', appId, 'public', 'data', coll);
-
-            onSnapshot(publicPath('customers'), (snapshot) => {
-                state.customers = snapshot.docs.map(doc => ({ firebaseId: doc.id, ...doc.data() }));
-                checkInitialLoading();
-                if (state.currentView === 'customers') renderCustomerSection(document.getElementById('viewContent'));
-            }, (err) => console.error("Customer sync failed", err));
-
-            onSnapshot(publicPath('deliveries'), (snapshot) => {
-                state.deliveries = snapshot.docs.map(doc => ({ firebaseId: doc.id, ...doc.data() }));
-                checkInitialLoading();
-                if (['assign', 'today', 'past', 'top_customers', 'my_performance'].includes(state.currentView)) renderView();
-            }, (err) => console.error("Deliveries sync failed", err));
-
-            onSnapshot(publicPath('drivers'), (snapshot) => {
-                state.drivers = snapshot.docs.map(doc => ({ firebaseId: doc.id, ...doc.data() }));
-                if (!state.activeTodayDriver && state.drivers.length > 0) state.activeTodayDriver = state.drivers[0].name;
-                checkInitialLoading();
-                if (state.currentView === 'settings') renderSettingsSection(document.getElementById('viewContent'));
-            }, (err) => console.error("Drivers sync failed", err));
-        }
-
-        async function initBackendApp() {
-            try {
-                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                    await signInWithCustomToken(auth, __initial_auth_token);
-                } else {
-                    await signInAnonymously(auth);
-                }
-                
-                onAuthStateChanged(auth, (user) => {
-                    if (user) {
-                        state.user = user;
-                        if (!state.listenersStarted) {
-                            state.listenersStarted = true;
-                            startListeners();
-                        }
-                    }
-                });
-            } catch (error) {
-                console.error("Auth Error:", error);
-                const overlay = document.getElementById('loadingOverlay');
-                if (overlay) overlay.innerHTML = `<p class="text-rose-600 font-bold p-4 text-center uppercase tracking-widest text-xs">Auth Failed. Please Refresh.</p>`;
+        // --- Live Timer ---
+        setInterval(() => {
+            if (window.currentDetailDeliveryIndex !== -1 && !document.getElementById('deliveryDetailModal').classList.contains('hidden')) {
+                const d = window.deliveries[window.currentDetailDeliveryIndex];
+                const el = document.getElementById('detailTimer');
+                if (d && d.status === 'in-transit' && el) { el.textContent = window.formatTimer(d.pickupTime); el.classList.remove('hidden'); }
+                else if (el) el.classList.add('hidden');
             }
-        }
+            document.querySelectorAll('[data-timer-for]').forEach(el => {
+                const order = window.deliveries.find(o => o.id === el.getAttribute('data-timer-for'));
+                if (order && order.status === 'in-transit') el.textContent = window.formatTimer(order.pickupTime);
+            });
+        }, 1000);
 
-        initBackendApp();
-
+        document.addEventListener('keydown', e => { if (e.key === 'Escape') { window.closeCustomerModal(); window.closeAssignModal(); window.closeDetailModal(); window.closeSidebar(); } });
     </script>
 </body>
 </html>
