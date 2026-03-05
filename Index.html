@@ -103,37 +103,45 @@
 
     <!-- Main Content -->
     <div class="min-h-screen">
-        <div class="bg-gradient-to-r from-orange-600 via-orange-500 to-yellow-500 px-6 py-3 flex items-center justify-center shadow-lg z-40 relative">
-            <div class="flex items-center gap-3">
-                <div class="w-9 h-9 bg-white/20 rounded-xl flex items-center justify-center">
-                    <i class="fas fa-truck-fast text-white text-lg"></i>
+        <div class="bg-gradient-to-r from-orange-600 via-orange-500 to-yellow-500 px-4 md:px-6 py-3 flex items-center justify-center shadow-lg z-40 relative">
+            <div class="flex items-center gap-2 md:gap-3">
+                <div class="w-8 h-8 md:w-9 md:h-9 bg-white/20 rounded-xl flex items-center justify-center">
+                    <i class="fas fa-truck-fast text-white text-base md:text-lg"></i>
                 </div>
-                <h1 class="text-white font-extrabold text-xl tracking-wide">GURU Delivery System</h1>
+                <h1 class="text-white font-extrabold text-lg md:text-xl tracking-wide">GURU Delivery</h1>
             </div>
         </div>
 
         <!-- Top Bar -->
-        <div class="bg-white shadow-sm border-b border-gray-200 px-6 py-4 flex items-center justify-between sticky top-0 z-30">
-            <div class="flex items-center gap-4">
+        <div class="bg-white shadow-sm border-b border-gray-200 px-4 md:px-6 py-3 md:py-4 flex items-center justify-between sticky top-0 z-30">
+            <div class="flex items-center gap-3 md:gap-4">
                 <button onclick="window.openSidebar()" class="hamburger-btn w-10 h-10 rounded-xl flex items-center justify-center border border-gray-200 text-gray-600 hover:text-orange-600 transition">
                     <i class="fas fa-bars text-lg"></i>
                 </button>
                 <div>
-                    <h2 class="text-xl font-bold text-gray-800" id="pageTitle">Add Customer</h2>
-                    <p class="text-sm text-gray-500" id="pageSubtitle">Manage your customer database</p>
+                    <h2 class="text-lg md:text-xl font-bold text-gray-800 leading-tight" id="pageTitle">Add Customer</h2>
+                    <p class="text-xs md:text-sm text-gray-500 hidden sm:block" id="pageSubtitle">Manage your customer database</p>
                 </div>
             </div>
-            <div id="authStatus" class="text-[10px] font-bold text-gray-300 uppercase tracking-widest">Connecting...</div>
+            <div id="authStatus" class="text-[9px] md:text-[10px] font-bold text-gray-300 uppercase tracking-widest text-right">Connecting...</div>
         </div>
 
         <!-- Sections -->
-        <div id="add-customer" class="section active p-6 md:p-8 fade-in">
+        <div id="add-customer" class="section active p-4 md:p-8 fade-in">
             <div class="max-w-6xl mx-auto">
-                <div class="flex items-center justify-between mb-6">
-                    <h3 class="text-xl font-bold text-gray-800" id="customerCount">0 customers</h3>
-                    <button onclick="window.openCustomerModal()" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-3 rounded-xl shadow-lg transition">
-                        <i class="fas fa-plus mr-2"></i>Add New Customer
-                    </button>
+                <div class="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
+                    <div>
+                        <h3 class="text-xl font-bold text-gray-800" id="customerCount">0 customers</h3>
+                    </div>
+                    <div class="flex flex-col sm:flex-row gap-3 flex-1 max-w-2xl justify-end">
+                        <div class="relative flex-1">
+                            <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
+                            <input type="text" id="customerSearchInput" oninput="window.renderCustomerTable()" placeholder="Search by name, ID or phone..." class="w-full bg-white border border-gray-200 pl-11 pr-4 py-3 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none shadow-sm transition">
+                        </div>
+                        <button onclick="window.openCustomerModal()" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-3 rounded-xl shadow-lg transition whitespace-nowrap">
+                            <i class="fas fa-plus mr-2"></i>Add New Customer
+                        </button>
+                    </div>
                 </div>
                 <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
                     <div class="overflow-x-auto">
@@ -155,7 +163,7 @@
             </div>
         </div>
 
-        <div id="assign-delivery" class="section p-6 md:p-8 fade-in">
+        <div id="assign-delivery" class="section p-4 md:p-8 fade-in">
             <div class="max-w-6xl mx-auto">
                 <div class="flex items-center justify-between mb-6">
                     <h3 class="text-xl font-bold text-gray-800">Assign Delivery</h3>
@@ -165,7 +173,7 @@
             </div>
         </div>
 
-        <div id="past-orders" class="section p-6 md:p-8 fade-in">
+        <div id="past-orders" class="section p-4 md:p-8 fade-in">
             <div class="max-w-6xl mx-auto">
                 <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
                     <div class="p-6 border-b flex justify-between items-center">
@@ -184,6 +192,7 @@
                                     <th class="px-5 py-4 text-left">Delivered</th>
                                     <th class="px-5 py-4 text-left">Time Taken</th>
                                     <th class="px-5 py-4 text-left">Status</th>
+                                    <th class="px-5 py-4 text-center">Actions</th>
                                 </tr>
                             </thead>
                             <tbody id="pastOrdersTableBody" class="divide-y divide-gray-100"></tbody>
@@ -193,17 +202,21 @@
             </div>
         </div>
 
-        <div id="settings" class="section p-6 md:p-8 fade-in">
+        <div id="settings" class="section p-4 md:p-8 fade-in">
             <div class="max-w-4xl mx-auto space-y-6">
-                <div class="bg-white rounded-2xl shadow-sm border p-8">
-                    <h3 class="text-lg font-bold text-gray-800 mb-6"><i class="fas fa-id-card mr-2 text-blue-500"></i>Manage Drivers</h3>
+                <div class="bg-white rounded-2xl shadow-sm border p-6 md:p-8">
+                    <h3 id="driverFormTitle" class="text-lg font-bold text-gray-800 mb-6"><i class="fas fa-id-card mr-2 text-blue-500"></i>Manage Drivers</h3>
                     <form id="driverForm" class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8 bg-gray-50 p-6 rounded-xl border border-gray-200" onsubmit="window.saveDriver(event)">
+                        <input type="hidden" id="editDriverId" value="-1">
                         <input type="text" id="driverName" required placeholder="Driver Name" class="border p-3 rounded-xl text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none">
                         <input type="tel" id="driverPhone" required placeholder="Phone Number" class="border p-3 rounded-xl text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none">
                         <div class="md:col-span-2">
                             <input type="url" id="driverTrackingLink" placeholder="Tracking Link (Optional)" class="w-full border p-3 rounded-xl text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none">
                         </div>
-                        <button type="submit" class="bg-slate-800 text-white font-bold py-3 rounded-xl text-sm hover:bg-slate-900 transition">Add Driver</button>
+                        <div class="md:col-span-2 flex gap-2">
+                            <button type="submit" id="driverSubmitBtn" class="flex-1 bg-slate-800 text-white font-bold py-3 rounded-xl text-sm hover:bg-slate-900 transition">Add Driver</button>
+                            <button type="button" id="driverCancelBtn" onclick="window.resetDriverForm()" class="hidden bg-gray-200 text-gray-600 font-bold py-3 px-6 rounded-xl text-sm hover:bg-gray-300 transition">Cancel</button>
+                        </div>
                     </form>
                     <div class="overflow-hidden border rounded-xl shadow-sm">
                         <table class="w-full text-sm">
@@ -228,54 +241,54 @@
             </div>
         </div>
 
-        <div id="analysis" class="section p-6 md:p-8 fade-in">
+        <div id="analysis" class="section p-4 md:p-8 fade-in">
             <div class="max-w-6xl mx-auto">
-                <div class="analysis-section rounded-2xl p-8 mb-6 shadow-sm border border-green-200">
-                    <h3 class="text-xl font-bold text-green-900 mb-6">Business Analysis</h3>
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <div class="bg-white/90 p-6 rounded-2xl shadow-sm border border-green-50"><p class="text-xs font-bold text-gray-400 uppercase mb-1">Total Revenue</p><p class="text-3xl font-black text-green-600" id="analysisRevenue">₹0</p></div>
-                        <div class="bg-white/90 p-6 rounded-2xl shadow-sm border border-green-50"><p class="text-xs font-bold text-gray-400 uppercase mb-1">Avg Order Value</p><p class="text-3xl font-black text-blue-600" id="analysisAvgOrder">₹0</p></div>
-                        <div class="bg-white/90 p-6 rounded-2xl shadow-sm border border-green-50"><p class="text-xs font-bold text-gray-400 uppercase mb-1">Success Rate</p><p class="text-3xl font-black text-amber-600" id="analysisSuccessRate">0%</p></div>
+                <div class="analysis-section rounded-2xl p-6 md:p-8 mb-6 shadow-sm border border-green-200">
+                    <h3 class="text-lg md:text-xl font-bold text-green-900 mb-6">Business Analysis</h3>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
+                        <div class="bg-white/90 p-5 md:p-6 rounded-2xl shadow-sm border border-green-50"><p class="text-xs font-bold text-gray-400 uppercase mb-1">Total Revenue</p><p class="text-2xl md:text-3xl font-black text-green-600" id="analysisRevenue">₹0</p></div>
+                        <div class="bg-white/90 p-5 md:p-6 rounded-2xl shadow-sm border border-green-50"><p class="text-xs font-bold text-gray-400 uppercase mb-1">Avg Order Value</p><p class="text-2xl md:text-3xl font-black text-blue-600" id="analysisAvgOrder">₹0</p></div>
+                        <div class="bg-white/90 p-5 md:p-6 rounded-2xl shadow-sm border border-green-50"><p class="text-xs font-bold text-gray-400 uppercase mb-1">Success Rate</p><p class="text-2xl md:text-3xl font-black text-amber-600" id="analysisSuccessRate">0%</p></div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <div id="performance" class="section p-6 md:p-8 fade-in">
+        <div id="performance" class="section p-4 md:p-8 fade-in">
             <div class="max-w-6xl mx-auto">
-                <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-200 mb-6 flex flex-wrap gap-4 items-end">
-                    <div class="flex-1 min-w-[150px]">
+                <div class="bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-gray-200 mb-6 flex flex-col sm:flex-row flex-wrap gap-4 sm:items-end">
+                    <div class="flex-1 w-full sm:w-auto min-w-[150px]">
                         <label class="block text-[10px] font-bold text-gray-400 uppercase mb-1 tracking-widest">From Date</label>
                         <input type="date" id="perfFromDate" onchange="window.renderPerformance()" class="w-full border rounded-xl p-3 text-sm focus:border-blue-500">
                     </div>
-                    <div class="flex-1 min-w-[150px]">
+                    <div class="flex-1 w-full sm:w-auto min-w-[150px]">
                         <label class="block text-[10px] font-bold text-gray-400 uppercase mb-1 tracking-widest">To Date</label>
                         <input type="date" id="perfToDate" onchange="window.renderPerformance()" class="w-full border rounded-xl p-3 text-sm focus:border-blue-500">
                     </div>
-                    <div class="flex-1 min-w-[150px]">
+                    <div class="flex-1 w-full sm:w-auto min-w-[150px]">
                         <label class="block text-[10px] font-bold text-gray-400 uppercase mb-1 tracking-widest">Driver</label>
                         <select id="perfDriverSelect" onchange="window.renderPerformance()" class="w-full border rounded-xl p-3 text-sm appearance-none bg-white">
                             <option value="All">All Drivers</option>
                         </select>
                     </div>
                 </div>
-                <div class="performance-section rounded-2xl p-10 mb-6 flex flex-wrap justify-around text-center gap-8 shadow-sm">
-                    <div><p class="text-xs font-bold text-blue-600 uppercase tracking-widest mb-1">Delivered</p><p class="text-6xl font-black text-blue-900" id="perfTotalDelivered">0</p></div>
-                    <div><p class="text-xs font-bold text-blue-600 uppercase tracking-widest mb-1">Avg Time</p><p class="text-6xl font-black text-blue-900" id="perfAvgTime">00:00</p></div>
+                <div class="performance-section rounded-2xl p-6 md:p-10 mb-6 flex flex-col sm:flex-row flex-wrap justify-around text-center gap-6 md:gap-8 shadow-sm">
+                    <div><p class="text-xs font-bold text-blue-600 uppercase tracking-widest mb-1">Delivered</p><p class="text-5xl md:text-6xl font-black text-blue-900" id="perfTotalDelivered">0</p></div>
+                    <div><p class="text-xs font-bold text-blue-600 uppercase tracking-widest mb-1">Avg Time</p><p class="text-5xl md:text-6xl font-black text-blue-900" id="perfAvgTime">00:00</p></div>
                 </div>
                 <div id="perfAgentList" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
             </div>
         </div>
 
-        <div id="today-delivery" class="section p-6 md:p-8 fade-in">
+        <div id="today-delivery" class="section p-4 md:p-8 fade-in">
             <div class="max-w-6xl mx-auto">
                 <div id="driverFilterToggle" class="flex flex-wrap gap-2 mb-6"></div>
-                <div class="today-delivery-section rounded-2xl p-8 mb-6 shadow-sm border border-amber-200">
-                    <div class="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
-                        <div><p class="text-4xl font-black text-gray-800" id="todayTotal">0</p><p class="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Total</p></div>
-                        <div><p class="text-4xl font-black text-blue-600" id="todayPending">0</p><p class="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Pending</p></div>
-                        <div><p class="text-4xl font-black text-yellow-600" id="todayInTransit">0</p><p class="text-[10px] font-bold text-gray-500 uppercase tracking-widest">In Transit</p></div>
-                        <div><p class="text-4xl font-black text-green-600" id="todayCompleted">0</p><p class="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Completed</p></div>
+                <div class="today-delivery-section rounded-2xl p-6 md:p-8 mb-6 shadow-sm border border-amber-200">
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6 text-center">
+                        <div><p class="text-3xl md:text-4xl font-black text-gray-800" id="todayTotal">0</p><p class="text-[9px] md:text-[10px] font-bold text-gray-500 uppercase tracking-widest">Total</p></div>
+                        <div><p class="text-3xl md:text-4xl font-black text-blue-600" id="todayPending">0</p><p class="text-[9px] md:text-[10px] font-bold text-gray-500 uppercase tracking-widest">Pending</p></div>
+                        <div><p class="text-3xl md:text-4xl font-black text-yellow-600" id="todayInTransit">0</p><p class="text-[9px] md:text-[10px] font-bold text-gray-500 uppercase tracking-widest">In Transit</p></div>
+                        <div><p class="text-3xl md:text-4xl font-black text-green-600" id="todayCompleted">0</p><p class="text-[9px] md:text-[10px] font-bold text-gray-500 uppercase tracking-widest">Completed</p></div>
                     </div>
                 </div>
                 <div id="todayCardsContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5"></div>
@@ -284,23 +297,38 @@
     </div>
 
     <!-- Modals -->
+    <!-- Confirmation Modal -->
+    <div id="confirmModal" class="fixed inset-0 flex items-center justify-center modal-overlay hidden z-[200]">
+        <div class="modal-content bg-white rounded-3xl shadow-2xl w-full max-w-sm mx-4 p-8 text-center">
+            <div class="w-16 h-16 bg-red-100 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i class="fas fa-exclamation-triangle text-2xl"></i>
+            </div>
+            <h3 class="text-xl font-black text-gray-800 mb-2">Are you sure?</h3>
+            <p class="text-sm text-gray-500 mb-6">This action cannot be undone.</p>
+            <div class="flex gap-3">
+                <button onclick="window.closeConfirmModal()" class="flex-1 bg-gray-100 text-gray-600 font-bold py-3 rounded-xl hover:bg-gray-200 transition">Cancel</button>
+                <button id="confirmYesBtn" class="flex-1 bg-red-600 text-white font-bold py-3 rounded-xl hover:bg-red-700 transition shadow-lg shadow-red-200">Yes, Delete</button>
+            </div>
+        </div>
+    </div>
+
     <div id="customerModal" class="fixed inset-0 flex items-center justify-center modal-overlay hidden">
         <div class="modal-content bg-white rounded-3xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden">
             <div class="bg-blue-600 p-6 text-white flex justify-between items-center">
                 <h3 class="font-bold text-lg">Customer Detail</h3>
                 <button onclick="window.closeCustomerModal()"><i class="fas fa-times text-xl"></i></button>
             </div>
-            <form id="customerForm" class="p-8 space-y-4" onsubmit="window.saveCustomer(event)">
+            <form id="customerForm" class="p-6 md:p-8 space-y-4 max-h-[80vh] overflow-y-auto" onsubmit="window.saveCustomer(event)">
                 <input type="hidden" id="editIndex" value="-1">
-                <input type="text" id="custId" required placeholder="Customer ID (e.g. C001)" class="w-full border p-4 rounded-2xl bg-gray-50 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
-                <input type="text" id="custName" required placeholder="Full Name" class="w-full border p-4 rounded-2xl bg-gray-50 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
-                <div class="grid grid-cols-2 gap-4">
-                    <input type="tel" id="custPhone" required placeholder="Phone" class="w-full border p-4 rounded-2xl bg-gray-50 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
-                    <input type="tel" id="custAltPhone" placeholder="Alt Phone" class="w-full border p-4 rounded-2xl bg-gray-50 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                <input type="text" id="custId" required placeholder="Customer ID (e.g. C001)" class="w-full border p-3 md:p-4 rounded-2xl bg-gray-50 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                <input type="text" id="custName" required placeholder="Full Name" class="w-full border p-3 md:p-4 rounded-2xl bg-gray-50 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <input type="tel" id="custPhone" required placeholder="Phone" class="w-full border p-3 md:p-4 rounded-2xl bg-gray-50 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                    <input type="tel" id="custAltPhone" placeholder="Alt Phone" class="w-full border p-3 md:p-4 rounded-2xl bg-gray-50 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
                 </div>
-                <textarea id="custAddress" required placeholder="Complete Delivery Address" class="w-full border p-4 rounded-2xl bg-gray-50 text-sm h-24 focus:ring-2 focus:ring-blue-500 outline-none"></textarea>
-                <input type="url" id="custMapLink" placeholder="Google Maps Link" class="w-full border p-4 rounded-2xl bg-gray-50 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
-                <button type="submit" id="modalSaveBtn" class="w-full bg-blue-600 text-white font-black py-4 rounded-2xl shadow-lg hover:bg-blue-700 transition active:scale-95">Save Customer</button>
+                <textarea id="custAddress" required placeholder="Complete Delivery Address" class="w-full border p-3 md:p-4 rounded-2xl bg-gray-50 text-sm h-24 focus:ring-2 focus:ring-blue-500 outline-none"></textarea>
+                <input type="url" id="custMapLink" placeholder="Google Maps Link" class="w-full border p-3 md:p-4 rounded-2xl bg-gray-50 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                <button type="submit" id="modalSaveBtn" class="w-full bg-blue-600 text-white font-black py-3 md:py-4 rounded-2xl shadow-lg hover:bg-blue-700 transition active:scale-95">Save Customer</button>
             </form>
         </div>
     </div>
@@ -308,34 +336,34 @@
     <div id="assignModal" class="fixed inset-0 flex items-center justify-center modal-overlay hidden">
         <div class="modal-content bg-white rounded-3xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden">
             <div class="bg-purple-600 p-6 text-white flex justify-between items-center"><h3 class="font-bold">New Delivery Task</h3><button onclick="window.closeAssignModal()"><i class="fas fa-times"></i></button></div>
-            <div class="p-8 space-y-4">
-                <input type="text" id="assignSearchInput" oninput="window.searchCustomersForAssign()" placeholder="Search Customer Name or Phone..." class="w-full border p-4 rounded-2xl bg-gray-50 text-sm focus:ring-2 focus:ring-purple-500 outline-none">
+            <div class="p-6 md:p-8 space-y-4 max-h-[80vh] overflow-y-auto">
+                <input type="text" id="assignSearchInput" oninput="window.searchCustomersForAssign()" placeholder="Search Customer Name or Phone..." class="w-full border p-3 md:p-4 rounded-2xl bg-gray-50 text-sm focus:ring-2 focus:ring-purple-500 outline-none">
                 <div id="assignSearchResults" class="max-h-40 overflow-y-auto border rounded-xl hidden bg-white shadow-inner divide-y"></div>
                 <div id="selectedCustomerCard" class="bg-purple-50 p-4 rounded-2xl border border-purple-100 hidden">
                     <p id="selCustName" class="font-bold text-purple-900"></p>
                     <p id="selCustId" class="text-[10px] text-purple-400 font-bold uppercase tracking-widest"></p>
                 </div>
-                <div class="grid grid-cols-2 gap-4">
-                    <input type="number" id="assignAmount" placeholder="Total Amount" class="border p-4 rounded-2xl bg-gray-50 text-sm focus:ring-2 focus:ring-purple-500 outline-none">
-                    <div class="flex items-center gap-4 text-xs font-bold px-2">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <input type="number" id="assignAmount" placeholder="Total Amount" class="border p-3 md:p-4 rounded-2xl bg-gray-50 text-sm focus:ring-2 focus:ring-purple-500 outline-none">
+                    <div class="flex items-center gap-4 text-xs font-bold px-2 py-2 sm:py-0">
                         <label class="cursor-pointer flex items-center"><input type="radio" name="paymentMode" value="COD" checked class="mr-2 accent-purple-600"> COD</label>
                         <label class="cursor-pointer flex items-center"><input type="radio" name="paymentMode" value="Prepaid" class="mr-2 accent-purple-600"> PAID</label>
                     </div>
                 </div>
-                <select id="assignDriver" class="w-full border p-4 rounded-2xl bg-gray-50 text-sm appearance-none focus:ring-2 focus:ring-purple-500 outline-none"></select>
-                <input type="date" id="assignDate" class="w-full border p-4 rounded-2xl bg-gray-50 text-sm focus:ring-2 focus:ring-purple-500 outline-none">
-                <button onclick="window.submitAssignment()" id="assignSubmitBtn" class="w-full bg-purple-600 text-white font-black py-4 rounded-2xl shadow-lg disabled:bg-gray-200 transition active:scale-95" disabled>Create Task</button>
+                <select id="assignDriver" class="w-full border p-3 md:p-4 rounded-2xl bg-gray-50 text-sm appearance-none focus:ring-2 focus:ring-purple-500 outline-none"></select>
+                <input type="date" id="assignDate" class="w-full border p-3 md:p-4 rounded-2xl bg-gray-50 text-sm focus:ring-2 focus:ring-purple-500 outline-none">
+                <button onclick="window.submitAssignment()" id="assignSubmitBtn" class="w-full bg-purple-600 text-white font-black py-3 md:py-4 rounded-2xl shadow-lg disabled:bg-gray-200 transition active:scale-95" disabled>Create Task</button>
             </div>
         </div>
     </div>
 
     <div id="deliveryDetailModal" class="fixed inset-0 flex items-center justify-center modal-overlay hidden">
         <div class="modal-content bg-white rounded-3xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden">
-            <div class="bg-slate-900 p-6 text-white flex justify-between items-center">
+            <div class="bg-slate-900 p-5 md:p-6 text-white flex justify-between items-center">
                 <div><h3 class="font-bold text-lg" id="detailOrderId">Details</h3><div id="detailTimer" class="timer-badge mt-1 hidden">00:00:00</div></div>
                 <button onclick="window.closeDetailModal()"><i class="fas fa-times text-xl"></i></button>
             </div>
-            <div class="p-8 space-y-6">
+            <div class="p-6 md:p-8 space-y-5 md:space-y-6 max-h-[80vh] overflow-y-auto">
                 <div id="detailStatus" class="status-badge text-center inline-block text-[10px] uppercase tracking-widest"></div>
                 <div>
                     <p class="text-[10px] text-gray-400 uppercase font-black mb-1 tracking-widest">Customer Information</p>
@@ -343,22 +371,39 @@
                     <p id="detailCustPhone" class="text-sm font-semibold text-gray-500"></p>
                     <p id="detailCustAddress" class="text-sm text-gray-600 mt-2 leading-relaxed"></p>
                 </div>
-                <div class="flex justify-between items-center p-5 bg-gray-50 rounded-2xl border border-gray-100">
+                <div class="flex justify-between items-center p-4 md:p-5 bg-gray-50 rounded-2xl border border-gray-100">
                     <div><p class="text-[10px] text-gray-400 uppercase font-black">Mode</p><p id="detailPaymentMode" class="font-bold text-blue-600"></p></div>
                     <div class="text-right"><p class="text-[10px] text-gray-400 uppercase font-black">Amount</p><p id="detailAmount" class="font-black text-2xl text-gray-800"></p></div>
                 </div>
+                
+                <!-- History Specific Information -->
+                <div id="historyExtraInfo" class="hidden p-4 md:p-5 bg-blue-50/50 rounded-2xl border border-blue-100 space-y-3">
+                     <div class="flex justify-between items-center">
+                        <p class="text-[10px] text-gray-400 uppercase font-black">Delivered By</p>
+                        <p id="detailDriverName" class="font-bold text-slate-800 text-sm"></p>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <p class="text-[10px] text-gray-400 uppercase font-black">Time Taken</p>
+                        <p id="detailTimeTaken" class="font-mono font-bold text-blue-600 text-sm"></p>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <p class="text-[10px] text-gray-400 uppercase font-black">Completed At</p>
+                        <p id="detailDeliveryTime" class="font-bold text-slate-600 text-xs"></p>
+                    </div>
+                </div>
+
                 <div id="assignActions" class="grid grid-cols-2 gap-3">
-                    <button onclick="window.callCustomer()" class="bg-green-600 text-white py-4 rounded-2xl font-black shadow-lg shadow-green-100 active:scale-95 transition flex items-center justify-center"><i class="fas fa-phone mr-2"></i>Call</button>
-                    <button onclick="window.whatsappCustomer()" class="bg-emerald-500 text-white py-4 rounded-2xl font-black shadow-lg shadow-emerald-100 active:scale-95 transition flex items-center justify-center"><i class="fab fa-whatsapp mr-2"></i>WhatsApp</button>
+                    <button onclick="window.callCustomer()" class="bg-green-600 text-white py-3 md:py-4 rounded-xl md:rounded-2xl font-black shadow-lg shadow-green-100 active:scale-95 transition flex items-center justify-center text-sm md:text-base"><i class="fas fa-phone mr-2"></i>Call</button>
+                    <button onclick="window.whatsappCustomer()" class="bg-emerald-500 text-white py-3 md:py-4 rounded-xl md:rounded-2xl font-black shadow-lg shadow-emerald-100 active:scale-95 transition flex items-center justify-center text-sm md:text-base"><i class="fab fa-whatsapp mr-2"></i>WhatsApp</button>
                 </div>
                 <div id="todayActions" class="space-y-4">
                     <div class="grid grid-cols-2 gap-3">
-                        <button onclick="window.callCustomer()" class="bg-green-600 text-white py-4 rounded-2xl font-black shadow-lg active:scale-95 transition flex items-center justify-center"><i class="fas fa-phone mr-2"></i>Call</button>
-                        <a id="detailMapLinkBtn" href="#" target="_blank" class="bg-blue-600 text-white py-4 rounded-2xl font-black shadow-lg active:scale-95 transition text-center flex items-center justify-center"><i class="fas fa-location-arrow mr-2"></i>Map</a>
+                        <button onclick="window.callCustomer()" class="bg-green-600 text-white py-3 md:py-4 rounded-xl md:rounded-2xl font-black shadow-lg active:scale-95 transition flex items-center justify-center text-sm md:text-base"><i class="fas fa-phone mr-2"></i>Call</button>
+                        <button id="detailMapLinkBtn" onclick="window.openGoogleMaps()" class="bg-blue-600 text-white py-3 md:py-4 rounded-xl md:rounded-2xl font-black shadow-lg active:scale-95 transition text-center flex items-center justify-center text-sm md:text-base"><i class="fas fa-location-arrow mr-2"></i>Map</button>
                     </div>
                     <div class="grid grid-cols-2 gap-3 pt-4 border-t">
-                        <button id="detailPickupBtn" onclick="window.pickupCurrentOrder()" class="bg-orange-500 text-white py-5 rounded-2xl font-black disabled:bg-gray-100 transition active:scale-95">Pickup</button>
-                        <button id="detailDeliveryBtn" onclick="window.deliverCurrentOrder()" class="bg-emerald-600 text-white py-5 rounded-2xl font-black disabled:bg-gray-100 transition active:scale-95">Mark Delivered</button>
+                        <button id="detailPickupBtn" onclick="window.pickupCurrentOrder()" class="bg-orange-500 text-white py-3 md:py-5 rounded-xl md:rounded-2xl font-black disabled:bg-gray-100 transition active:scale-95 text-sm md:text-base">Pickup</button>
+                        <button id="detailDeliveryBtn" onclick="window.deliverCurrentOrder()" class="bg-emerald-600 text-white py-3 md:py-5 rounded-xl md:rounded-2xl font-black disabled:bg-gray-100 transition active:scale-95 text-sm md:text-base">Delivered</button>
                     </div>
                 </div>
             </div>
@@ -398,6 +443,7 @@
         window.user = null;
         window.currentDetailDeliveryIndex = -1;
         window.selectedDriverFilter = null;
+        window.pendingConfirmAction = null; // Used for global confirmation modal
 
         // --- Hoisted Logic Functions ---
         function formatTimer(startISO, endISO) {
@@ -418,33 +464,69 @@
             setTimeout(() => { toast.classList.add('translate-y-20', 'opacity-0'); toast.classList.replace('pointer-events-auto', 'pointer-events-none'); }, 3000);
         }
 
+        // Global Confirmation Modal Logic
+        window.openConfirmModal = (action) => {
+            window.pendingConfirmAction = action;
+            document.getElementById('confirmModal').classList.remove('hidden');
+        };
+        window.closeConfirmModal = () => {
+            document.getElementById('confirmModal').classList.add('hidden');
+            window.pendingConfirmAction = null;
+        };
+        document.getElementById('confirmYesBtn').addEventListener('click', async () => {
+            if (window.pendingConfirmAction) {
+                await window.pendingConfirmAction();
+                window.closeConfirmModal();
+            }
+        });
+
         function renderCustomerTable() {
             const tbody = document.getElementById('customerTableBody');
+            const searchInput = document.getElementById('customerSearchInput');
             if (!tbody) return;
-            tbody.innerHTML = window.customers.map((c, i) => `
-                <tr class="hover:bg-blue-50/50">
+
+            const query = searchInput ? searchInput.value.toLowerCase().trim() : '';
+            
+            const filteredCustomers = window.customers.filter(c => {
+                if (!query) return true;
+                return (
+                    c.name.toLowerCase().includes(query) ||
+                    c.id.toLowerCase().includes(query) ||
+                    c.phone.includes(query) ||
+                    (c.altPhone && c.altPhone.includes(query))
+                );
+            });
+
+            tbody.innerHTML = filteredCustomers.map((c, i) => {
+                const originalIndex = window.customers.findIndex(oc => oc.firebaseId === c.firebaseId);
+                // Smart link for map
+                const mapBtnHtml = c.mapLink ? `<button onclick="window.openGoogleMaps('${c.mapLink}')" class="text-green-500 transition hover:scale-125 inline-block"><i class="fas fa-map-marker-alt"></i></button>` : '-';
+                return `
+                <tr class="hover:bg-blue-50/50 transition">
                     <td class="px-5 py-4 font-mono text-[10px] font-bold text-gray-400">${c.id}</td>
                     <td class="px-5 py-4 font-bold text-gray-800">${c.name}</td>
                     <td class="px-5 py-4 text-xs font-semibold text-gray-500">+91 ${c.phone}</td>
                     <td class="px-5 py-4 text-xs text-gray-400 truncate max-w-[200px]">${c.address}</td>
-                    <td class="px-5 py-4 text-center">${c.mapLink ? `<a href="${c.mapLink}" target="_blank" class="text-green-500 transition hover:scale-125"><i class="fas fa-map-marker-alt"></i></a>` : '-'}</td>
-                    <td class="px-5 py-4 text-center">
-                        <button onclick="window.openCustomerModal(${i})" class="text-blue-500 p-2 rounded-lg hover:bg-blue-50 transition"><i class="fas fa-edit"></i></button>
+                    <td class="px-5 py-4 text-center">${mapBtnHtml}</td>
+                    <td class="px-5 py-4 text-center whitespace-nowrap">
+                        <button onclick="window.openCustomerModal(${originalIndex})" class="text-blue-500 p-2 rounded-lg hover:bg-blue-50 transition"><i class="fas fa-edit"></i></button>
                         <button onclick="window.deleteCustomer('${c.firebaseId}')" class="text-red-400 p-2 ml-1 hover:text-red-600 transition"><i class="fas fa-trash-alt"></i></button>
                     </td>
-                </tr>`).join('') || '<tr><td colspan="6" class="text-center py-20 text-gray-300 italic">No customers yet</td></tr>';
-            document.getElementById('customerCount').textContent = window.customers.length + ' customers';
+                </tr>`}).join('') || `<tr><td colspan="6" class="text-center py-20 text-gray-300 italic">${query ? 'No matching customers found' : 'No customers yet'}</td></tr>`;
+            
+            document.getElementById('customerCount').textContent = filteredCustomers.length + (query ? ' matching results' : ' customers');
         }
 
         function renderDriverTable() {
             const tbody = document.getElementById('driverTableBody');
             if (!tbody) return;
             tbody.innerHTML = window.drivers.map((d) => `
-                <tr>
+                <tr class="hover:bg-gray-50/50 transition">
                     <td class="px-5 py-4 font-bold text-gray-800">${d.name}</td>
                     <td class="px-5 py-4 text-gray-500 font-medium">+91 ${d.phone}</td>
-                    <td class="px-5 py-4 text-center">
-                        <button onclick="window.deleteDriver('${d.firebaseId}')" class="text-red-500 p-2 transition hover:scale-110"><i class="fas fa-trash-alt"></i></button>
+                    <td class="px-5 py-4 text-center whitespace-nowrap">
+                        <button onclick="window.editDriver('${d.firebaseId}')" class="text-blue-500 p-2 transition hover:scale-110"><i class="fas fa-edit"></i></button>
+                        <button onclick="window.deleteDriver('${d.firebaseId}')" class="text-red-500 p-2 ml-1 transition hover:scale-110"><i class="fas fa-trash-alt"></i></button>
                     </td>
                 </tr>`).join('') || '<tr><td colspan="3" class="text-center py-10 text-gray-300 italic">Add drivers above</td></tr>';
         }
@@ -456,7 +538,7 @@
             container.innerHTML = active.map(d => {
                 const realIdx = window.deliveries.indexOf(d);
                 return `
-                <div class="delivery-card bg-white rounded-3xl shadow-sm border-l-[6px] border-purple-400 p-6 transition hover:shadow-lg" onclick="window.openDeliveryDetail(${realIdx}, 'assign')">
+                <div class="delivery-card bg-white rounded-3xl shadow-sm border-l-[6px] border-purple-400 p-6 transition hover:shadow-lg cursor-pointer" onclick="window.openDeliveryDetail(${realIdx}, 'assign')">
                     <div class="flex justify-between items-start mb-4">
                         <span class="font-mono text-[10px] font-black text-gray-300 uppercase tracking-widest">${d.id}</span>
                         <span class="status-badge bg-purple-50 text-purple-600 uppercase tracking-widest text-[8px]">ASSIGNED</span>
@@ -479,7 +561,7 @@
             container.innerHTML = filteredForDisplay.map(d => {
                 const realIdx = window.deliveries.indexOf(d);
                 return `
-                <div class="delivery-card bg-white rounded-3xl shadow-sm border-l-[6px] ${d.status === 'in-transit' ? 'border-orange-400' : 'border-blue-400'} p-6 transition hover:shadow-lg" onclick="window.openDeliveryDetail(${realIdx}, 'today')">
+                <div class="delivery-card bg-white rounded-3xl shadow-sm border-l-[6px] ${d.status === 'in-transit' ? 'border-orange-400' : 'border-blue-400'} p-6 transition hover:shadow-lg cursor-pointer" onclick="window.openDeliveryDetail(${realIdx}, 'today')">
                     <div class="flex justify-between items-start mb-4">
                         <span class="font-mono text-[10px] font-black text-gray-300 uppercase tracking-widest">${d.id}</span>
                         <span class="status-badge ${d.status === 'in-transit' ? 'bg-orange-50 text-orange-600' : 'bg-blue-50 text-blue-600'} text-[8px] uppercase tracking-widest">${d.status.toUpperCase()}</span>
@@ -505,11 +587,12 @@
             if (!tbody) return;
             const past = window.deliveries.filter(d => d.status === 'delivered' || d.status === 'cancelled');
             tbody.innerHTML = past.slice().reverse().map(d => {
+                const realIdx = window.deliveries.indexOf(d);
                 const pTime = d.pickupTime ? new Date(d.pickupTime).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit', hour12: true}) : '-';
                 const dTime = d.deliveryTime ? new Date(d.deliveryTime).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit', hour12: true}) : '-';
                 return `
-                <tr>
-                    <td class="px-5 py-4 font-mono text-[10px] font-bold text-gray-300">${d.id}</td>
+                <tr class="hover:bg-gray-50 transition">
+                    <td class="px-5 py-4 font-mono text-[10px] font-bold text-blue-500 cursor-pointer hover:underline" onclick="window.openDeliveryDetail(${realIdx}, 'history')">${d.id}</td>
                     <td class="px-5 py-4 font-bold text-gray-800">${d.customerName}</td>
                     <td class="px-5 py-4 text-gray-400 font-medium">${d.driverName}</td>
                     <td class="px-5 py-4 text-xs text-gray-400 font-bold uppercase tracking-tighter">${d.date}</td>
@@ -517,7 +600,10 @@
                     <td class="px-5 py-4 text-xs font-bold text-emerald-500">${dTime}</td>
                     <td class="px-5 py-4 font-mono text-xs font-bold text-blue-600">${d.totalTimeTaken || '-'}</td>
                     <td class="px-5 py-4"><span class="status-badge ${d.status==='delivered'?'bg-green-100 text-green-700':'bg-red-100 text-red-700'}">${d.status.toUpperCase()}</span></td>
-                </tr>`;}).join('') || '<tr><td colspan="8" class="text-center py-20 text-gray-300 italic">History empty</td></tr>';
+                    <td class="px-5 py-4 text-center">
+                        <button onclick="window.deleteDelivery('${d.firebaseId}')" class="text-red-400 hover:text-red-600 transition p-2"><i class="fas fa-trash-alt"></i></button>
+                    </td>
+                </tr>`;}).join('') || '<tr><td colspan="9" class="text-center py-20 text-gray-300 italic">History empty</td></tr>';
             document.getElementById('pastOrderCount').textContent = past.length + ' orders';
         }
 
@@ -549,7 +635,7 @@
 
             const ags = {}; filtered.forEach(d => { if(!ags[d.driverName]) ags[d.driverName] = { c:0, s:0 }; ags[d.driverName].c++; if(d.pickupTime&&d.deliveryTime) ags[d.driverName].s += Math.floor((new Date(d.deliveryTime)-new Date(d.pickupTime))/1000); });
             const listEl = document.getElementById('perfAgentList');
-            if (listEl) listEl.innerHTML = Object.entries(ags).map(([n, data]) => `<div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex justify-between items-center transition hover:shadow-md"><div><p class="font-black text-gray-800 leading-tight">${n}</p><p class="text-[10px] font-bold text-gray-400 mt-1 uppercase tracking-widest">Avg Speed: ${Math.floor(data.s/data.count/60)}m/task</p></div><div class="text-right"><p class="text-3xl font-black text-blue-600">${data.c}</p><p class="text-[8px] font-black text-gray-400 uppercase tracking-widest">Completed</p></div></div>`).join('');
+            if (listEl) listEl.innerHTML = Object.entries(ags).map(([n, data]) => `<div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex justify-between items-center transition hover:shadow-md"><div><p class="font-black text-gray-800 leading-tight">${n}</p><p class="text-[10px] font-bold text-gray-400 mt-1 uppercase tracking-widest">Avg Speed: ${Math.floor(data.s/data.c/60)}m/task</p></div><div class="text-right"><p class="text-3xl font-black text-blue-600">${data.c}</p><p class="text-[8px] font-black text-gray-400 uppercase tracking-widest">Completed</p></div></div>`).join('');
         }
 
         function renderAnalysis() {
@@ -616,7 +702,7 @@
         window.openCustomerModal = (idx) => {
             document.getElementById('customerModal').classList.remove('hidden');
             document.getElementById('customerForm').reset();
-            if(idx !== undefined) {
+            if(idx !== undefined && window.customers[idx]) {
                 const c = window.customers[idx];
                 document.getElementById('editIndex').value = idx;
                 document.getElementById('custId').value = c.id;
@@ -639,20 +725,40 @@
         window.openDeliveryDetail = (idx, context) => {
             window.currentDetailDeliveryIndex = idx;
             const d = window.deliveries[idx];
+            if(!d) return;
+
             document.getElementById('detailOrderId').textContent = d.id;
             document.getElementById('detailCustName').textContent = d.customerName;
             document.getElementById('detailCustPhone').textContent = d.customerPhone;
             document.getElementById('detailCustAddress').textContent = d.customerAddress;
             document.getElementById('detailPaymentMode').textContent = d.payment;
             document.getElementById('detailAmount').textContent = '₹' + d.amount;
-            document.getElementById('detailStatus').textContent = d.status.toUpperCase();
-            document.getElementById('detailStatus').className = `status-badge text-[9px] px-4 py-2 ${d.status==='delivered'?'bg-green-100 text-green-700':d.status==='in-transit'?'bg-orange-100 text-orange-700':'bg-blue-100 text-blue-600'}`;
             
+            // Set Status Badge
+            const statusEl = document.getElementById('detailStatus');
+            statusEl.textContent = d.status.toUpperCase();
+            statusEl.className = `status-badge text-[9px] px-4 py-2 ${d.status==='delivered'?'bg-green-100 text-green-700':d.status==='in-transit'?'bg-orange-100 text-orange-700':'bg-blue-100 text-blue-600'}`;
+            
+            // Extra Info for History View (Formatted in AM/PM)
+            const extraInfo = document.getElementById('historyExtraInfo');
+            if (context === 'history') {
+                extraInfo.classList.remove('hidden');
+                document.getElementById('detailDriverName').textContent = d.driverName;
+                document.getElementById('detailTimeTaken').textContent = d.totalTimeTaken || '-';
+                document.getElementById('detailDeliveryTime').textContent = d.deliveryTime ? new Date(d.deliveryTime).toLocaleString([], {hour12: true}) : 'N/A';
+            } else {
+                extraInfo.classList.add('hidden');
+            }
+
+            // Button Visibility
             document.getElementById('assignActions').classList.toggle('hidden', context !== 'assign');
             document.getElementById('todayActions').classList.toggle('hidden', context !== 'today');
             
             const mapBtn = document.getElementById('detailMapLinkBtn');
-            if (mapBtn) { mapBtn.href = d.customerMapLink || '#'; mapBtn.style.opacity = d.customerMapLink ? '1' : '0.2'; }
+            if (mapBtn) { 
+                mapBtn.style.opacity = d.customerMapLink ? '1' : '0.2'; 
+                mapBtn.style.pointerEvents = d.customerMapLink ? 'auto' : 'none';
+            }
             
             document.getElementById('detailPickupBtn').disabled = (d.status !== 'pending');
             document.getElementById('detailDeliveryBtn').disabled = (d.status !== 'in-transit');
@@ -674,11 +780,45 @@
 
         window.saveDriver = async (e) => {
             e.preventDefault();
+            const editId = document.getElementById('editDriverId').value;
+            const data = { 
+                name: document.getElementById('driverName').value.trim(), 
+                phone: document.getElementById('driverPhone').value.trim(), 
+                trackingLink: document.getElementById('driverTrackingLink').value.trim() 
+            };
+
             try {
-                await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'drivers'), { name: document.getElementById('driverName').value.trim(), phone: document.getElementById('driverPhone').value.trim(), trackingLink: document.getElementById('driverTrackingLink').value.trim() });
-                document.getElementById('driverForm').reset();
-                window.showToast("Driver Added", "success");
+                if (editId !== "-1") {
+                    await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'drivers', editId), data);
+                    window.showToast("Driver Updated", "success");
+                } else {
+                    await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'drivers'), data);
+                    window.showToast("Driver Added", "success");
+                }
+                window.resetDriverForm();
             } catch (err) { window.showToast("Sync Error", "error"); }
+        };
+
+        window.editDriver = (id) => {
+            const drv = window.drivers.find(d => d.firebaseId === id);
+            if (!drv) return;
+            document.getElementById('editDriverId').value = id;
+            document.getElementById('driverName').value = drv.name;
+            document.getElementById('driverPhone').value = drv.phone;
+            document.getElementById('driverTrackingLink').value = drv.trackingLink || '';
+            document.getElementById('driverSubmitBtn').textContent = "Update Driver";
+            document.getElementById('driverCancelBtn').classList.remove('hidden');
+            document.getElementById('driverFormTitle').innerHTML = '<i class="fas fa-edit mr-2 text-blue-500"></i>Edit Driver';
+            // Scroll to form
+            document.getElementById('driverForm').scrollIntoView({ behavior: 'smooth' });
+        };
+
+        window.resetDriverForm = () => {
+            document.getElementById('editDriverId').value = "-1";
+            document.getElementById('driverForm').reset();
+            document.getElementById('driverSubmitBtn').textContent = "Add Driver";
+            document.getElementById('driverCancelBtn').classList.add('hidden');
+            document.getElementById('driverFormTitle').innerHTML = '<i class="fas fa-id-card mr-2 text-blue-500"></i>Manage Drivers';
         };
 
         window.submitAssignment = async () => {
@@ -697,8 +837,8 @@
             const d = window.deliveries[window.currentDetailDeliveryIndex];
             try {
                 await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'deliveries', d.firebaseId), { status: 'in-transit', pickupTime: new Date().toISOString() });
+                window.closeDetailModal(); 
                 window.showToast("Task Started!", "success");
-                window.openDeliveryDetail(window.currentDetailDeliveryIndex, 'today');
             } catch (err) { window.showToast("Sync Error", "error"); }
         };
 
@@ -706,16 +846,43 @@
             const d = window.deliveries[window.currentDetailDeliveryIndex];
             const now = new Date();
             try {
-                await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'deliveries', d.firebaseId), { status: 'delivered', deliveryTime: now.toISOString(), totalTimeTaken: window.formatTimer(d.pickupTime, now.toISOString()) });
-                window.closeDetailModal(); window.showToast("Delivered! 🎉", "success");
+                await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'deliveries', d.firebaseId), { 
+                    status: 'delivered', 
+                    deliveryTime: now.toISOString(), 
+                    totalTimeTaken: window.formatTimer(d.pickupTime, now.toISOString()) 
+                });
+                window.closeDetailModal(); 
+                window.showToast("Delivered! 🎉", "success");
             } catch (err) { window.showToast("Sync Error", "error"); }
         };
 
         window.whatsappCustomer = () => {
             const d = window.deliveries[window.currentDetailDeliveryIndex];
             const drv = window.drivers.find(dr => dr.name === d.driverName);
-            const msg = `Greetings from GURU! 🙏\n\nAssigned Driver: ${d.driverName}\nContact: +91 ${drv?.phone || 'N/A'}\nTracking: ${drv?.trackingLink || '-'}\n\nOrder value: ₹${d.amount}\nYour order will arrive shortly.`;
+            
+            const msg = `Hello ${d.customerName},
+
+Your order has been successfully assigned to our delivery executive ${d.driverName} (📞 +91 ${drv?.phone || 'N/A'}).
+
+You can track your delivery using the link below:
+🔗 ${drv?.trackingLink || 'No link provided'}
+
+Your order will be delivered within the next 3–4 hours.
+
+Thank you for choosing Guru Sampoorna. We truly appreciate your trust in us 🙏`;
+            
             window.open(`https://wa.me/91${d.customerPhone}?text=${encodeURIComponent(msg)}`, '_blank');
+        };
+
+        // Smart Google Maps Opening Logic
+        window.openGoogleMaps = (link) => {
+            const d = window.deliveries[window.currentDetailDeliveryIndex];
+            const mapUrl = link || (d ? d.customerMapLink : null);
+            if (!mapUrl) return;
+
+            // Using the Google Maps Search API format often triggers the app directly on mobile
+            const finalUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapUrl)}`;
+            window.open(finalUrl, '_blank');
         };
 
         window.searchCustomersForAssign = () => {
@@ -736,11 +903,16 @@
             document.getElementById('assignSubmitBtn').disabled = false;
         };
 
-        window.deleteCustomer = async (id) => { if(confirm('Delete customer?')) await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'customers', id)); };
-        window.deleteDriver = async (id) => { if(confirm('Delete driver?')) await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'drivers', id)); };
-        window.clearAllData = async () => { if(!confirm('ERASE EVERYTHING?')) return; const b = writeBatch(db); const cols = ['customers', 'drivers', 'deliveries']; for(let col of cols) { const s = await getDocs(collection(db, 'artifacts', appId, 'public', 'data', col)); s.forEach(d => b.delete(d.ref)); } await b.commit(); window.showToast("Cloud Wiped", "error"); };
+        window.deleteCustomer = async (id) => { window.openConfirmModal(async () => { await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'customers', id)); window.showToast("Customer Deleted", "error"); }); };
+        window.deleteDriver = async (id) => { window.openConfirmModal(async () => { await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'drivers', id)); window.showToast("Driver Deleted", "error"); }); };
+        window.deleteDelivery = async (id) => { window.openConfirmModal(async () => { await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'deliveries', id)); window.showToast("Order Deleted", "error"); }); };
+        window.clearAllData = async () => { window.openConfirmModal(async () => { const b = writeBatch(db); const cols = ['customers', 'drivers', 'deliveries']; for(let col of cols) { const s = await getDocs(collection(db, 'artifacts', appId, 'public', 'data', col)); s.forEach(d => b.delete(d.ref)); } await b.commit(); window.showToast("Cloud Wiped", "error"); }); };
+        
         window.updateTodayBadge = () => { const today = new Date().toISOString().split('T')[0]; const badge = document.getElementById('todayBadge'); if(badge) badge.textContent = window.deliveries.filter(d => d.date === today && d.status !== 'delivered').length; };
-        window.callCustomer = () => window.open('tel:+91' + window.deliveries[window.currentDetailDeliveryIndex].customerPhone, '_self');
+        window.callCustomer = () => {
+            const d = window.deliveries[window.currentDetailDeliveryIndex];
+            if(d) window.open('tel:+91' + d.customerPhone, '_self');
+        };
 
         // --- Firebase Init ---
         signInAnonymously(auth).then(() => {
@@ -785,7 +957,7 @@
             });
         }, 1000);
 
-        document.addEventListener('keydown', e => { if (e.key === 'Escape') { window.closeCustomerModal(); window.closeAssignModal(); window.closeDetailModal(); window.closeSidebar(); } });
+        document.addEventListener('keydown', e => { if (e.key === 'Escape') { window.closeCustomerModal(); window.closeAssignModal(); window.closeDetailModal(); window.closeSidebar(); window.closeConfirmModal(); } });
     </script>
 </body>
 </html>
