@@ -59,7 +59,7 @@
         </div>
         <nav class="flex-1 py-4 px-3 space-y-1 overflow-y-auto">
             <p class="text-xs text-slate-500 uppercase tracking-wider px-3 mb-2 font-semibold">Main Menu</p>
-            <div class="nav-item active flex items-center gap-3 px-3 py-3 rounded-lg cursor-pointer bg-slate-800 text-white" data-section="add-customer" onclick="window.switchSection('add-customer', this)">
+            <div class="nav-item flex items-center gap-3 px-3 py-3 rounded-lg cursor-pointer text-slate-300 hover:bg-slate-800" data-section="add-customer" onclick="window.switchSection('add-customer', this)">
                 <i class="fas fa-user-plus w-5 text-center text-blue-400"></i>
                 <span class="text-sm font-medium">Add Customer</span>
             </div>
@@ -108,15 +108,30 @@
                     <i class="fas fa-bars text-lg"></i>
                 </button>
                 <div>
-                    <h2 class="text-lg md:text-xl font-bold text-gray-800 leading-tight" id="pageTitle">Add Customer</h2>
-                    <p class="text-xs md:text-sm text-gray-500 hidden sm:block" id="pageSubtitle">Manage your customer database</p>
+                    <h2 class="text-lg md:text-xl font-bold text-gray-800 leading-tight" id="pageTitle">Today's Delivery</h2>
+                    <p class="text-xs md:text-sm text-gray-500 hidden sm:block" id="pageSubtitle">Driver View</p>
                 </div>
             </div>
             <div id="authStatus" class="text-[9px] md:text-[10px] font-bold text-gray-300 uppercase tracking-widest text-right">Connecting...</div>
         </div>
 
         <!-- Sections -->
-        <div id="add-customer" class="section active p-4 md:p-8 fade-in">
+        <div id="today-delivery" class="section active p-4 md:p-8 fade-in">
+            <div class="max-w-6xl mx-auto">
+                <div id="driverFilterToggle" class="flex flex-wrap gap-2 mb-6"></div>
+                <div class="today-delivery-section rounded-2xl p-6 md:p-8 mb-6 shadow-sm border border-amber-200">
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6 text-center">
+                        <div><p class="text-3xl md:text-4xl font-black text-gray-800" id="todayTotal">0</p><p class="text-[9px] md:text-[10px] font-bold text-gray-500 uppercase tracking-widest">Total</p></div>
+                        <div><p class="text-3xl md:text-4xl font-black text-blue-600" id="todayPending">0</p><p class="text-[9px] md:text-[10px] font-bold text-gray-500 uppercase tracking-widest">Pending</p></div>
+                        <div><p class="text-3xl md:text-4xl font-black text-yellow-600" id="todayInTransit">0</p><p class="text-[9px] md:text-[10px] font-bold text-gray-500 uppercase tracking-widest">In Transit</p></div>
+                        <div><p class="text-3xl md:text-4xl font-black text-green-600" id="todayCompleted">0</p><p class="text-[9px] md:text-[10px] font-bold text-gray-500 uppercase tracking-widest">Completed</p></div>
+                    </div>
+                </div>
+                <div id="todayCardsContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5"></div>
+            </div>
+        </div>
+
+        <div id="add-customer" class="section p-4 md:p-8 fade-in">
             <div class="max-w-6xl mx-auto">
                 <div class="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
                     <div>
@@ -154,10 +169,29 @@
 
         <div id="assign-delivery" class="section p-4 md:p-8 fade-in">
             <div class="max-w-6xl mx-auto">
-                <div class="flex items-center justify-between mb-6">
-                    <h3 class="text-xl font-bold text-gray-800">Assign Delivery</h3>
-                    <button onclick="window.openAssignModal()" class="bg-purple-600 hover:bg-purple-700 text-white font-semibold px-6 py-3 rounded-xl shadow-lg transition">Assign New</button>
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-4">
+                    <div>
+                        <h3 class="text-xl font-bold text-gray-800">Assign Delivery</h3>
+                        <p class="text-sm text-gray-500 font-medium" id="assignTotalCount">Total Assigned: 0</p>
+                    </div>
+                    <button onclick="window.openAssignModal()" class="bg-purple-600 hover:bg-purple-700 text-white font-semibold px-6 py-3 rounded-xl shadow-lg transition whitespace-nowrap self-start sm:self-auto">
+                        <i class="fas fa-plus mr-2"></i>Assign New
+                    </button>
                 </div>
+
+                <div class="bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-gray-200 mb-6 flex flex-col sm:flex-row flex-wrap gap-4 sm:items-end">
+                    <div class="flex-1 w-full sm:w-auto min-w-[150px]">
+                        <label class="block text-[10px] font-bold text-gray-400 uppercase mb-1 tracking-widest">Filter by Date</label>
+                        <input type="date" id="assignFilterDate" onchange="window.renderAssignCards()" class="w-full border rounded-xl p-3 text-sm focus:border-purple-500 outline-none">
+                    </div>
+                    <div class="flex-1 w-full sm:w-auto min-w-[150px]">
+                        <label class="block text-[10px] font-bold text-gray-400 uppercase mb-1 tracking-widest">Filter by Driver</label>
+                        <select id="assignFilterDriver" onchange="window.renderAssignCards()" class="w-full border rounded-xl p-3 text-sm appearance-none bg-white focus:border-purple-500 outline-none">
+                            <option value="All">All Drivers</option>
+                        </select>
+                    </div>
+                </div>
+
                 <div id="deliveryCardsContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5"></div>
             </div>
         </div>
@@ -174,6 +208,15 @@
                         <input type="date" id="historyToDate" onchange="window.renderPastOrders()" class="w-full border rounded-xl p-3 text-sm focus:border-orange-500 outline-none">
                     </div>
                     <div class="flex-1 w-full sm:w-auto min-w-[150px]">
+                        <label class="block text-[10px] font-bold text-gray-400 uppercase mb-1 tracking-widest">Payment Mode</label>
+                        <select id="historyPaymentFilter" onchange="window.renderPastOrders()" class="w-full border rounded-xl p-3 text-sm appearance-none bg-white focus:border-orange-500 outline-none">
+                            <option value="All">All Modes</option>
+                            <option value="Prepaid">Prepaid</option>
+                            <option value="Cash">Cash</option>
+                            <option value="Online">Online</option>
+                        </select>
+                    </div>
+                    <div class="flex-1 w-full sm:w-auto min-w-[150px]">
                         <label class="block text-[10px] font-bold text-gray-400 uppercase mb-1 tracking-widest">Driver Filter</label>
                         <select id="historyDriverFilter" onchange="window.renderPastOrders()" class="w-full border rounded-xl p-3 text-sm appearance-none bg-white focus:border-orange-500 outline-none">
                             <option value="All">All Drivers</option>
@@ -184,6 +227,22 @@
                         <select id="historyCustomerFilter" onchange="window.renderPastOrders()" class="w-full border rounded-xl p-3 text-sm appearance-none bg-white focus:border-orange-500 outline-none">
                             <option value="All">All Customers</option>
                         </select>
+                    </div>
+                </div>
+
+                <!-- Past Orders Summary -->
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+                    <div class="bg-green-50 border border-green-100 p-5 rounded-2xl shadow-sm">
+                        <p class="text-[10px] font-bold text-green-600 uppercase tracking-widest mb-1">Cash Collected</p>
+                        <p class="text-2xl font-black text-green-800" id="summaryCash">₹0</p>
+                    </div>
+                    <div class="bg-blue-50 border border-blue-100 p-5 rounded-2xl shadow-sm">
+                        <p class="text-[10px] font-bold text-blue-600 uppercase tracking-widest mb-1">Online Collected</p>
+                        <p class="text-2xl font-black text-blue-800" id="summaryOnline">₹0</p>
+                    </div>
+                    <div class="bg-purple-50 border border-purple-100 p-5 rounded-2xl shadow-sm">
+                        <p class="text-[10px] font-bold text-purple-600 uppercase tracking-widest mb-1">Prepaid Received</p>
+                        <p class="text-2xl font-black text-purple-800" id="summaryPrepaid">₹0</p>
                     </div>
                 </div>
 
@@ -292,32 +351,18 @@
             </div>
         </div>
 
-        <div id="today-delivery" class="section p-4 md:p-8 fade-in">
-            <div class="max-w-6xl mx-auto">
-                <div id="driverFilterToggle" class="flex flex-wrap gap-2 mb-6"></div>
-                <div class="today-delivery-section rounded-2xl p-6 md:p-8 mb-6 shadow-sm border border-amber-200">
-                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6 text-center">
-                        <div><p class="text-3xl md:text-4xl font-black text-gray-800" id="todayTotal">0</p><p class="text-[9px] md:text-[10px] font-bold text-gray-500 uppercase tracking-widest">Total</p></div>
-                        <div><p class="text-3xl md:text-4xl font-black text-blue-600" id="todayPending">0</p><p class="text-[9px] md:text-[10px] font-bold text-gray-500 uppercase tracking-widest">Pending</p></div>
-                        <div><p class="text-3xl md:text-4xl font-black text-yellow-600" id="todayInTransit">0</p><p class="text-[9px] md:text-[10px] font-bold text-gray-500 uppercase tracking-widest">In Transit</p></div>
-                        <div><p class="text-3xl md:text-4xl font-black text-green-600" id="todayCompleted">0</p><p class="text-[9px] md:text-[10px] font-bold text-gray-500 uppercase tracking-widest">Completed</p></div>
-                    </div>
-                </div>
-                <div id="todayCardsContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5"></div>
-            </div>
-        </div>
     </div>
 
     <!-- Bottom Tab Bar for Delivery Boy -->
     <div class="fixed bottom-0 left-0 w-full bg-white shadow-[0_-5px_15px_rgba(0,0,0,0.05)] border-t border-gray-100 flex justify-around items-center z-40 pt-3 pb-4 md:pb-3">
-        <button onclick="window.switchSection('today-delivery', this)" class="nav-item bottom-nav-item flex-1 flex flex-col items-center justify-center gap-1.5 text-gray-400 transition hover:text-orange-500" data-section="today-delivery">
+        <button onclick="window.switchSection('today-delivery', this)" class="nav-item bottom-nav-item active text-orange-600 flex-1 flex flex-col items-center justify-center gap-1.5 transition hover:text-orange-500" data-section="today-delivery">
             <div class="relative">
                 <i class="fas fa-calendar-day text-2xl"></i>
                 <span class="absolute -top-2 -right-3 bg-amber-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full shadow-sm" id="bottomTodayBadge">0</span>
             </div>
             <span class="text-[10px] font-bold uppercase tracking-widest mt-1">Today</span>
         </button>
-        <button onclick="window.switchSection('performance', this)" class="nav-item bottom-nav-item flex-1 flex flex-col items-center justify-center gap-1.5 text-gray-400 transition hover:text-orange-500" data-section="performance">
+        <button onclick="window.switchSection('performance', this)" class="nav-item bottom-nav-item text-gray-400 flex-1 flex flex-col items-center justify-center gap-1.5 transition hover:text-orange-500" data-section="performance">
             <i class="fas fa-chart-line text-2xl"></i>
             <span class="text-[10px] font-bold uppercase tracking-widest mt-1">Performance</span>
         </button>
@@ -332,15 +377,15 @@
                 <button onclick="window.closePaymentModal()"><i class="fas fa-times text-xl"></i></button>
             </div>
             <div class="p-6 md:p-8">
-                <p class="text-sm text-gray-500 mb-4">Select the actual payment method used by the customer:</p>
+                <p class="text-sm text-gray-500 mb-4">How did the customer pay the COD amount?</p>
                 <div class="flex flex-col gap-3 mb-6">
                     <label class="cursor-pointer flex items-center p-4 border rounded-2xl bg-gray-50 hover:bg-emerald-50 transition border-gray-200">
-                        <input type="radio" name="finalPaymentMode" value="COD" id="payConfirmCOD" class="mr-3 w-5 h-5 accent-emerald-600">
-                        <span class="font-bold text-gray-800">Cash / COD</span>
+                        <input type="radio" name="finalPaymentMode" value="Cash" id="payConfirmCash" checked class="mr-3 w-5 h-5 accent-emerald-600">
+                        <span class="font-bold text-gray-800">Cash</span>
                     </label>
                     <label class="cursor-pointer flex items-center p-4 border rounded-2xl bg-gray-50 hover:bg-emerald-50 transition border-gray-200">
-                        <input type="radio" name="finalPaymentMode" value="Prepaid" id="payConfirmPrepaid" class="mr-3 w-5 h-5 accent-emerald-600">
-                        <span class="font-bold text-gray-800">Online / Prepaid</span>
+                        <input type="radio" name="finalPaymentMode" value="Online" id="payConfirmOnline" class="mr-3 w-5 h-5 accent-emerald-600">
+                        <span class="font-bold text-gray-800">Online (UPI/Card)</span>
                     </label>
                 </div>
                 <button onclick="window.confirmDeliveryPayment()" class="w-full bg-emerald-600 text-white font-black py-3 md:py-4 rounded-xl md:rounded-2xl shadow-lg hover:bg-emerald-700 transition active:scale-95 text-sm md:text-base">Complete Delivery</button>
@@ -359,6 +404,40 @@
             <div class="flex gap-3">
                 <button onclick="window.closeConfirmModal()" class="flex-1 bg-gray-100 text-gray-600 font-bold py-3 rounded-xl hover:bg-gray-200 transition">Cancel</button>
                 <button id="confirmYesBtn" class="flex-1 bg-red-600 text-white font-bold py-3 rounded-xl hover:bg-red-700 transition shadow-lg shadow-red-200">Yes, Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Past Order Modal -->
+    <div id="editPastOrderModal" class="fixed inset-0 flex items-center justify-center modal-overlay hidden z-[160]">
+        <div class="modal-content bg-white rounded-3xl shadow-2xl w-full max-w-sm mx-4 overflow-hidden">
+            <div class="bg-orange-500 p-5 md:p-6 text-white flex justify-between items-center">
+                <h3 class="font-bold text-lg">Edit Past Order</h3>
+                <button onclick="window.closeEditPastOrderModal()"><i class="fas fa-times text-xl"></i></button>
+            </div>
+            <div class="p-6 md:p-8 space-y-4">
+                <input type="hidden" id="editPastOrderId" value="">
+                <div>
+                    <label class="block text-[10px] font-bold text-gray-400 uppercase mb-1 tracking-widest">Driver</label>
+                    <select id="editPastDriver" class="w-full border p-3 rounded-xl bg-gray-50 text-sm appearance-none focus:ring-2 focus:ring-orange-500 outline-none"></select>
+                </div>
+                <div>
+                    <label class="block text-[10px] font-bold text-gray-400 uppercase mb-1 tracking-widest">Amount</label>
+                    <input type="number" id="editPastAmount" class="w-full border p-3 rounded-xl bg-gray-50 text-sm focus:ring-2 focus:ring-orange-500 outline-none">
+                </div>
+                <div>
+                    <label class="block text-[10px] font-bold text-gray-400 uppercase mb-1 tracking-widest">Payment Mode</label>
+                    <select id="editPastPayment" class="w-full border p-3 rounded-xl bg-gray-50 text-sm appearance-none focus:ring-2 focus:ring-orange-500 outline-none">
+                        <option value="Cash">Cash</option>
+                        <option value="Online">Online</option>
+                        <option value="Prepaid">Prepaid</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-[10px] font-bold text-gray-400 uppercase mb-1 tracking-widest">Date</label>
+                    <input type="date" id="editPastDate" class="w-full border p-3 rounded-xl bg-gray-50 text-sm focus:ring-2 focus:ring-orange-500 outline-none">
+                </div>
+                <button onclick="window.submitEditPastOrder()" class="w-full bg-orange-500 text-white font-black py-3 md:py-4 rounded-xl shadow-lg hover:bg-orange-600 transition active:scale-95 text-sm md:text-base">Update Order</button>
             </div>
         </div>
     </div>
@@ -386,14 +465,19 @@
 
     <div id="assignModal" class="fixed inset-0 flex items-center justify-center modal-overlay hidden">
         <div class="modal-content bg-white rounded-3xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden">
-            <div class="bg-purple-600 p-6 text-white flex justify-between items-center"><h3 class="font-bold">New Delivery Task</h3><button onclick="window.closeAssignModal()"><i class="fas fa-times"></i></button></div>
+            <div class="bg-purple-600 p-6 text-white flex justify-between items-center"><h3 class="font-bold" id="assignModalTitle">New Delivery Task</h3><button onclick="window.closeAssignModal()"><i class="fas fa-times"></i></button></div>
             <div class="p-6 md:p-8 space-y-4 max-h-[80vh] overflow-y-auto">
-                <input type="text" id="assignSearchInput" oninput="window.searchCustomersForAssign()" placeholder="Search Customer Name or Phone..." class="w-full border p-3 md:p-4 rounded-2xl bg-gray-50 text-sm focus:ring-2 focus:ring-purple-500 outline-none">
-                <div id="assignSearchResults" class="max-h-40 overflow-y-auto border rounded-xl hidden bg-white shadow-inner divide-y"></div>
+                <input type="hidden" id="editAssignId" value="">
+                <div id="assignSearchContainer">
+                    <input type="text" id="assignSearchInput" oninput="window.searchCustomersForAssign()" placeholder="Search Customer Name or Phone..." class="w-full border p-3 md:p-4 rounded-2xl bg-gray-50 text-sm focus:ring-2 focus:ring-purple-500 outline-none">
+                    <div id="assignSearchResults" class="max-h-40 overflow-y-auto border rounded-xl hidden bg-white shadow-inner divide-y"></div>
+                </div>
+                
                 <div id="selectedCustomerCard" class="bg-purple-50 p-4 rounded-2xl border border-purple-100 hidden">
                     <p id="selCustName" class="font-bold text-purple-900"></p>
                     <p id="selCustId" class="text-[10px] text-purple-400 font-bold uppercase tracking-widest"></p>
                 </div>
+                
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <input type="number" id="assignAmount" placeholder="Total Amount" class="border p-3 md:p-4 rounded-2xl bg-gray-50 text-sm focus:ring-2 focus:ring-purple-500 outline-none">
                     <div class="flex items-center gap-4 text-xs font-bold px-2 py-2 sm:py-0">
@@ -500,6 +584,14 @@
         window.pendingDeliveryCompletion = null; // Used for capturing exact delivery time
 
         // --- Hoisted Logic Functions ---
+        
+        // Date formatter for DD/MM/YYYY
+        window.formatDateDDMMYYYY = (dateStr) => {
+            if (!dateStr) return '-';
+            const [y, m, d] = dateStr.split('-');
+            return `${d}/${m}/${y}`;
+        };
+
         function formatTimer(startISO, endISO) {
             if (!startISO) return "00:00:00";
             const s = new Date(startISO), e = endISO ? new Date(endISO) : new Date();
@@ -585,22 +677,53 @@
                 </tr>`).join('') || '<tr><td colspan="3" class="text-center py-10 text-gray-300 italic">Add drivers above</td></tr>';
         }
 
+        function updateAssignFilters() {
+            const driverSel = document.getElementById('assignFilterDriver');
+            if (driverSel) {
+                const cur = driverSel.value;
+                driverSel.innerHTML = '<option value="All">All Drivers</option>' + window.drivers.map(d => `<option value="${d.name}">${d.name}</option>`).join('');
+                driverSel.value = cur || 'All';
+            }
+        }
+
         function renderAssignCards() {
             const container = document.getElementById('deliveryCardsContainer');
             if (!container) return;
-            const active = window.deliveries.filter(d => d.status === 'pending');
+
+            // Get filter values
+            const filterDate = document.getElementById('assignFilterDate')?.value;
+            const filterDriver = document.getElementById('assignFilterDriver')?.value;
+
+            let active = window.deliveries.filter(d => d.status === 'pending');
+
+            // Apply filters
+            if (filterDate) active = active.filter(d => d.date === filterDate);
+            if (filterDriver && filterDriver !== 'All') active = active.filter(d => d.driverName === filterDriver);
+
+            // Update header count
+            const countEl = document.getElementById('assignTotalCount');
+            if (countEl) countEl.textContent = `Total Assigned: ${active.length}`;
+
             container.innerHTML = active.map(d => {
                 const realIdx = window.deliveries.indexOf(d);
                 return `
-                <div class="delivery-card bg-white rounded-3xl shadow-sm border-l-[6px] border-purple-400 p-6 transition hover:shadow-lg cursor-pointer" onclick="window.openDeliveryDetail(${realIdx}, 'assign')">
-                    <div class="flex justify-between items-start mb-4">
-                        <span class="font-mono text-[10px] font-black text-gray-300 uppercase tracking-widest">${d.id}</span>
-                        <span class="status-badge bg-purple-50 text-purple-600 uppercase tracking-widest text-[8px]">ASSIGNED</span>
+                <div class="delivery-card bg-white rounded-3xl shadow-sm border-l-[6px] border-purple-400 p-6 transition hover:shadow-lg cursor-pointer flex flex-col justify-between" onclick="window.openDeliveryDetail(${realIdx}, 'assign')">
+                    <div>
+                        <div class="flex justify-between items-start mb-4">
+                            <span class="font-mono text-[10px] font-black text-gray-300 uppercase tracking-widest">${d.id}</span>
+                            <span class="status-badge bg-purple-50 text-purple-600 uppercase tracking-widest text-[8px]">ASSIGNED</span>
+                        </div>
+                        <p class="font-black text-gray-800 text-lg leading-tight mb-4">${d.customerName}</p>
                     </div>
-                    <p class="font-black text-gray-800 text-lg leading-tight mb-4">${d.customerName}</p>
-                    <div class="flex justify-between items-center pt-4 border-t border-gray-50">
-                        <span class="font-black text-gray-800">₹${d.amount}</span>
-                        <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">${d.driverName}</span>
+                    <div>
+                        <div class="flex justify-between items-center pt-4 border-t border-gray-50">
+                            <span class="font-black text-gray-800">₹${d.amount}</span>
+                            <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">${window.formatDateDDMMYYYY(d.date)} | ${d.driverName}</span>
+                        </div>
+                        <div class="flex justify-end gap-2 mt-4 pt-3 border-t border-gray-50">
+                            <button onclick="event.stopPropagation(); window.editAssignment('${d.firebaseId}')" class="bg-blue-50 text-blue-600 px-4 py-2 rounded-xl text-xs font-bold transition hover:bg-blue-100 flex items-center"><i class="fas fa-edit mr-1.5"></i>Edit</button>
+                            <button onclick="event.stopPropagation(); window.deleteDelivery('${d.firebaseId}')" class="bg-red-50 text-red-600 px-4 py-2 rounded-xl text-xs font-bold transition hover:bg-red-100 flex items-center"><i class="fas fa-trash-alt mr-1.5"></i>Delete</button>
+                        </div>
                     </div>
                 </div>`;}).join('') || '<div class="col-span-full text-center py-20 text-gray-300 italic">No pending tasks</div>';
         }
@@ -660,6 +783,7 @@
             const toDate = document.getElementById('historyToDate')?.value;
             const driverQ = document.getElementById('historyDriverFilter')?.value;
             const customerQ = document.getElementById('historyCustomerFilter')?.value;
+            const paymentQ = document.getElementById('historyPaymentFilter')?.value;
 
             // Filter base (delivered or cancelled)
             let past = window.deliveries.filter(d => d.status === 'delivered' || d.status === 'cancelled');
@@ -669,6 +793,26 @@
             if (toDate) past = past.filter(d => d.date <= toDate);
             if (driverQ && driverQ !== 'All') past = past.filter(d => d.driverName === driverQ);
             if (customerQ && customerQ !== 'All') past = past.filter(d => d.customerName === customerQ);
+            if (paymentQ && paymentQ !== 'All') {
+                past = past.filter(d => {
+                    const pay = (d.payment || '').toLowerCase();
+                    const req = paymentQ.toLowerCase();
+                    return pay === req || (req === 'cash' && pay === 'cod'); // map cod to cash for legacy support
+                });
+            }
+
+            // Summary Calculation
+            let sumCash = 0, sumOnline = 0, sumPrepaid = 0;
+            past.forEach(d => {
+                const amt = parseFloat(d.amount) || 0;
+                const p = (d.payment || '').toLowerCase();
+                if (p === 'cash' || p === 'cod') sumCash += amt;
+                else if (p === 'online') sumOnline += amt;
+                else if (p === 'prepaid') sumPrepaid += amt;
+            });
+            document.getElementById('summaryCash').textContent = '₹' + sumCash.toLocaleString();
+            document.getElementById('summaryOnline').textContent = '₹' + sumOnline.toLocaleString();
+            document.getElementById('summaryPrepaid').textContent = '₹' + sumPrepaid.toLocaleString();
 
             tbody.innerHTML = past.slice().reverse().map(d => {
                 const realIdx = window.deliveries.indexOf(d);
@@ -679,12 +823,13 @@
                     <td class="px-5 py-4 font-mono text-[10px] font-bold text-blue-500 cursor-pointer hover:underline" onclick="window.openDeliveryDetail(${realIdx}, 'history')">${d.id}</td>
                     <td class="px-5 py-4 font-bold text-gray-800">${d.customerName}</td>
                     <td class="px-5 py-4 text-gray-400 font-medium">${d.driverName}</td>
-                    <td class="px-5 py-4 text-xs text-gray-400 font-bold uppercase tracking-tighter">${d.date}</td>
+                    <td class="px-5 py-4 text-xs text-gray-400 font-bold uppercase tracking-tighter">${window.formatDateDDMMYYYY(d.date)}</td>
                     <td class="px-5 py-4 text-xs font-bold text-orange-400">${pTime}</td>
                     <td class="px-5 py-4 text-xs font-bold text-emerald-500">${dTime}</td>
                     <td class="px-5 py-4 font-mono text-xs font-bold text-blue-600">${d.totalTimeTaken || '-'}</td>
                     <td class="px-5 py-4"><span class="status-badge ${d.status==='delivered'?'bg-green-100 text-green-700':'bg-red-100 text-red-700'}">${d.status.toUpperCase()}</span></td>
-                    <td class="px-5 py-4 text-center">
+                    <td class="px-5 py-4 text-center whitespace-nowrap">
+                        <button onclick="window.openEditPastOrderModal('${d.firebaseId}')" class="text-blue-400 hover:text-blue-600 transition p-2"><i class="fas fa-edit"></i></button>
                         <button onclick="window.deleteDelivery('${d.firebaseId}')" class="text-red-400 hover:text-red-600 transition p-2"><i class="fas fa-trash-alt"></i></button>
                     </td>
                 </tr>`;}).join('') || '<tr><td colspan="9" class="text-center py-20 text-gray-300 italic">History empty</td></tr>';
@@ -750,11 +895,51 @@
         window.renderTodayCards = renderTodayCards;
         window.renderPastOrders = renderPastOrders;
         window.updateHistoryFilters = updateHistoryFilters;
+        window.updateAssignFilters = updateAssignFilters;
         window.setDriverFilter = setDriverFilter;
         window.renderDriverToggles = renderDriverToggles;
         window.renderPerformance = renderPerformance;
         window.renderAnalysis = renderAnalysis;
         window.updatePerfDriverSelect = updatePerfDriverSelect;
+
+        window.openEditPastOrderModal = (firebaseId) => {
+            const d = window.deliveries.find(x => x.firebaseId === firebaseId);
+            if (!d) return;
+
+            document.getElementById('editPastOrderId').value = firebaseId;
+            document.getElementById('editPastDriver').innerHTML = window.drivers.map((drv) => `<option value="${drv.name}" ${drv.name === d.driverName ? 'selected' : ''}>${drv.name}</option>`).join('');
+            document.getElementById('editPastAmount').value = d.amount;
+            
+            let payVal = d.payment.toLowerCase() === 'cod' ? 'Cash' : d.payment.charAt(0).toUpperCase() + d.payment.slice(1).toLowerCase();
+            document.getElementById('editPastPayment').value = payVal;
+            
+            document.getElementById('editPastDate').value = d.date;
+            
+            document.getElementById('editPastOrderModal').classList.remove('hidden');
+        };
+
+        window.closeEditPastOrderModal = () => {
+            document.getElementById('editPastOrderModal').classList.add('hidden');
+        };
+
+        window.submitEditPastOrder = async () => {
+            const editId = document.getElementById('editPastOrderId').value;
+            const driverName = document.getElementById('editPastDriver').value;
+            const amount = document.getElementById('editPastAmount').value;
+            const payment = document.getElementById('editPastPayment').value;
+            const date = document.getElementById('editPastDate').value;
+            
+            try {
+                await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'deliveries', editId), {
+                    driverName: driverName,
+                    amount: amount,
+                    payment: payment,
+                    date: date
+                });
+                window.closeEditPastOrderModal(); 
+                window.showToast("Order Updated", "success");
+            } catch (err) { window.showToast("Sync Error", "error"); }
+        };
 
         window.openSidebar = () => {
             document.getElementById('sidebar').classList.remove('hidden-sidebar');
@@ -821,10 +1006,59 @@
 
         window.openAssignModal = () => {
             document.getElementById('assignModal').classList.remove('hidden');
-            document.getElementById('assignDriver').innerHTML = window.drivers.map((d, i) => `<option value="${i}">${d.name}</option>`).join('');
+            
+            // Clear existing form data thoroughly
+            document.getElementById('editAssignId').value = "";
+            document.getElementById('assignSearchInput').value = "";
+            document.getElementById('assignSearchResults').innerHTML = "";
+            document.getElementById('assignAmount').value = "";
+            document.querySelector('input[name="paymentMode"][value="COD"]').checked = true;
             document.getElementById('assignDate').valueAsDate = new Date();
+            
+            // Reset customer selection UI completely
+            document.getElementById('selCustId').textContent = "";
+            document.getElementById('selCustName').textContent = "";
+            
+            // UI adjustments
+            document.getElementById('assignModalTitle').textContent = "New Delivery Task";
+            document.getElementById('assignSubmitBtn').textContent = "Create Task";
+            document.getElementById('assignSubmitBtn').disabled = true;
+            document.getElementById('selectedCustomerCard').classList.add('hidden');
+            document.getElementById('assignSearchContainer').classList.remove('hidden');
+            document.getElementById('assignSearchResults').classList.add('hidden');
+
+            document.getElementById('assignDriver').innerHTML = window.drivers.map((d, i) => `<option value="${i}">${d.name}</option>`).join('');
         };
         window.closeAssignModal = () => document.getElementById('assignModal').classList.add('hidden');
+
+        window.editAssignment = (firebaseId) => {
+            const d = window.deliveries.find(x => x.firebaseId === firebaseId);
+            if (!d) return;
+
+            document.getElementById('assignModal').classList.remove('hidden');
+            
+            // Set edit context ID
+            document.getElementById('editAssignId').value = firebaseId;
+            
+            // UI Adjustments for edit mode
+            document.getElementById('assignModalTitle').textContent = "Edit Delivery Task";
+            document.getElementById('assignSubmitBtn').textContent = "Update Task";
+            document.getElementById('assignSubmitBtn').disabled = false;
+
+            // Customer section (readonly visually)
+            document.getElementById('assignSearchContainer').classList.add('hidden');
+            document.getElementById('selCustId').textContent = "Customer Details Locked"; 
+            document.getElementById('selCustName').textContent = d.customerName;
+            document.getElementById('selectedCustomerCard').classList.remove('hidden');
+            
+            // Fill existing info
+            document.getElementById('assignAmount').value = d.amount;
+            const paymentRadio = document.querySelector(`input[name="paymentMode"][value="${d.payment}"]`);
+            if(paymentRadio) paymentRadio.checked = true;
+            
+            document.getElementById('assignDriver').innerHTML = window.drivers.map((drv, i) => `<option value="${i}" ${drv.name === d.driverName ? 'selected' : ''}>${drv.name}</option>`).join('');
+            document.getElementById('assignDate').value = d.date;
+        };
 
         window.openDeliveryDetail = (idx, context) => {
             window.currentDetailDeliveryIndex = idx;
@@ -937,17 +1171,31 @@
         };
 
         window.submitAssignment = async () => {
-            const custId = document.getElementById('selCustId').textContent;
-            const cust = window.customers.find(c => c.id === custId);
+            const editId = document.getElementById('editAssignId').value;
             const driverIdx = document.getElementById('assignDriver').value;
             const driver = window.drivers[driverIdx];
-            
-            // Includes customerAltPhone inside the delivery data model
-            const data = { id: 'ORD-' + (Date.now() % 1000000), customerName: cust.name, customerPhone: cust.phone, customerAltPhone: cust.altPhone || '', customerAddress: cust.address, customerMapLink: cust.mapLink, driverName: driver.name, amount: document.getElementById('assignAmount').value, payment: document.querySelector('input[name="paymentMode"]:checked').value, date: document.getElementById('assignDate').value, status: 'pending', pickupTime: null, deliveryTime: null, totalTimeTaken: null };
+            const amount = document.getElementById('assignAmount').value;
+            const payment = document.querySelector('input[name="paymentMode"]:checked').value;
+            const date = document.getElementById('assignDate').value;
             
             try {
-                await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'deliveries'), data);
-                window.closeAssignModal(); window.showToast("Task Created", "success");
+                if (editId) {
+                    // Update existing delivery task (only allows updating driver, amount, payment, and date)
+                    await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'deliveries', editId), {
+                        driverName: driver.name,
+                        amount: amount,
+                        payment: payment,
+                        date: date
+                    });
+                    window.closeAssignModal(); window.showToast("Task Updated", "success");
+                } else {
+                    // Create new task
+                    const custId = document.getElementById('selCustId').textContent;
+                    const cust = window.customers.find(c => c.id === custId);
+                    const data = { id: 'ORD-' + (Date.now() % 1000000), customerName: cust.name, customerPhone: cust.phone, customerAltPhone: cust.altPhone || '', customerAddress: cust.address, customerMapLink: cust.mapLink, driverName: driver.name, amount: amount, payment: payment, date: date, status: 'pending', pickupTime: null, deliveryTime: null, totalTimeTaken: null };
+                    await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'deliveries'), data);
+                    window.closeAssignModal(); window.showToast("Task Created", "success");
+                }
             } catch (err) { window.showToast("Sync Error", "error"); }
         };
 
@@ -960,18 +1208,31 @@
             } catch (err) { window.showToast("Sync Error", "error"); }
         };
 
-        window.deliverCurrentOrder = () => {
+        window.deliverCurrentOrder = async () => {
             const d = window.deliveries[window.currentDetailDeliveryIndex];
-            window.pendingDeliveryCompletion = new Date(); // Capture exact delivery time to stop the clock
+            const now = new Date(); 
             
-            // Pre-select original payment mode
-            const isPrepaid = d.payment.toLowerCase() === 'prepaid';
-            document.getElementById('payConfirmPrepaid').checked = isPrepaid;
-            document.getElementById('payConfirmCOD').checked = !isPrepaid;
-
-            // Hide detail modal, show payment modal
-            document.getElementById('deliveryDetailModal').classList.add('hidden');
-            document.getElementById('paymentConfirmModal').classList.remove('hidden');
+            // If the order was already Prepaid, complete it immediately without asking
+            if (d.payment.toLowerCase() === 'prepaid') {
+                try {
+                    await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'deliveries', d.firebaseId), { 
+                        status: 'delivered', 
+                        deliveryTime: now.toISOString(), 
+                        totalTimeTaken: window.formatTimer(d.pickupTime, now.toISOString()) 
+                    });
+                    window.closeDetailModal(); 
+                    window.currentDetailDeliveryIndex = -1;
+                    window.showToast("Delivered! 🎉", "success");
+                } catch (err) { window.showToast("Sync Error", "error"); }
+            } else {
+                // If it is COD, ask whether they paid in Cash or Online
+                window.pendingDeliveryCompletion = now; // Capture exact delivery time to stop the clock
+                document.getElementById('payConfirmCash').checked = true; // Default to cash
+                
+                // Hide detail modal, show payment modal
+                document.getElementById('deliveryDetailModal').classList.add('hidden');
+                document.getElementById('paymentConfirmModal').classList.remove('hidden');
+            }
         };
 
         window.closePaymentModal = () => {
@@ -1086,6 +1347,7 @@ Thank you for choosing Guru Sampoorna. We truly appreciate your trust in us 🙏
                         renderDriverToggles();
                         updatePerfDriverSelect();
                         if(window.updateHistoryFilters) window.updateHistoryFilters();
+                        if(window.updateAssignFilters) window.updateAssignFilters();
                     });
                     onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'deliveries'), (snap) => {
                         window.deliveries = snap.docs.map(d => ({...d.data(), firebaseId: d.id}));
@@ -1114,7 +1376,7 @@ Thank you for choosing Guru Sampoorna. We truly appreciate your trust in us 🙏
             });
         }, 1000);
 
-        document.addEventListener('keydown', e => { if (e.key === 'Escape') { window.closeCustomerModal(); window.closeAssignModal(); window.closeDetailModal(); window.closeSidebar(); window.closeConfirmModal(); window.closePaymentModal(); } });
+        document.addEventListener('keydown', e => { if (e.key === 'Escape') { window.closeCustomerModal(); window.closeAssignModal(); window.closeDetailModal(); window.closeSidebar(); window.closeConfirmModal(); window.closePaymentModal(); window.closeEditPastOrderModal(); } });
     </script>
 </body>
 </html>
