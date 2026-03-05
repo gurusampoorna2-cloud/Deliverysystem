@@ -83,17 +83,6 @@
                 <i class="fas fa-chart-pie w-5 text-center text-green-400"></i>
                 <span class="text-sm font-medium">Analysis</span>
             </div>
-
-            <p class="text-xs text-slate-500 uppercase tracking-wider px-3 mt-5 mb-2 font-semibold">Highlights</p>
-            <div class="nav-item flex items-center gap-3 px-3 py-3 rounded-lg cursor-pointer text-slate-300 hover:bg-slate-800" data-section="today-delivery" onclick="window.switchSection('today-delivery', this)">
-                <i class="fas fa-calendar-day w-5 text-center text-amber-400"></i>
-                <span class="text-sm font-medium">Today's Delivery</span>
-                <span class="ml-auto bg-amber-500 text-white text-xs font-bold px-2 py-0.5 rounded-full" id="todayBadge">0</span>
-            </div>
-            <div class="nav-item flex items-center gap-3 px-3 py-3 rounded-lg cursor-pointer text-slate-300 hover:bg-slate-800" data-section="performance" onclick="window.switchSection('performance', this)">
-                <i class="fas fa-chart-line w-5 text-center text-emerald-400"></i>
-                <span class="text-sm font-medium">Performance</span>
-            </div>
         </nav>
         <div class="p-4 border-t border-slate-700 flex items-center gap-3">
             <div class="w-9 h-9 bg-gradient-to-br from-orange-400 to-orange-600 rounded-full flex items-center justify-center font-bold text-sm text-white">GP</div>
@@ -102,7 +91,7 @@
     </div>
 
     <!-- Main Content -->
-    <div class="min-h-screen">
+    <div class="min-h-screen pb-24">
         <div class="bg-gradient-to-r from-orange-600 via-orange-500 to-yellow-500 px-4 md:px-6 py-3 flex items-center justify-center shadow-lg z-40 relative">
             <div class="flex items-center gap-2 md:gap-3">
                 <div class="w-8 h-8 md:w-9 md:h-9 bg-white/20 rounded-xl flex items-center justify-center">
@@ -175,6 +164,29 @@
 
         <div id="past-orders" class="section p-4 md:p-8 fade-in">
             <div class="max-w-6xl mx-auto">
+                <div class="bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-gray-200 mb-6 flex flex-col sm:flex-row flex-wrap gap-4 sm:items-end">
+                    <div class="flex-1 w-full sm:w-auto min-w-[150px]">
+                        <label class="block text-[10px] font-bold text-gray-400 uppercase mb-1 tracking-widest">From Date</label>
+                        <input type="date" id="historyFromDate" onchange="window.renderPastOrders()" class="w-full border rounded-xl p-3 text-sm focus:border-orange-500 outline-none">
+                    </div>
+                    <div class="flex-1 w-full sm:w-auto min-w-[150px]">
+                        <label class="block text-[10px] font-bold text-gray-400 uppercase mb-1 tracking-widest">To Date</label>
+                        <input type="date" id="historyToDate" onchange="window.renderPastOrders()" class="w-full border rounded-xl p-3 text-sm focus:border-orange-500 outline-none">
+                    </div>
+                    <div class="flex-1 w-full sm:w-auto min-w-[150px]">
+                        <label class="block text-[10px] font-bold text-gray-400 uppercase mb-1 tracking-widest">Driver Filter</label>
+                        <select id="historyDriverFilter" onchange="window.renderPastOrders()" class="w-full border rounded-xl p-3 text-sm appearance-none bg-white focus:border-orange-500 outline-none">
+                            <option value="All">All Drivers</option>
+                        </select>
+                    </div>
+                    <div class="flex-1 w-full sm:w-auto min-w-[150px]">
+                        <label class="block text-[10px] font-bold text-gray-400 uppercase mb-1 tracking-widest">Customer Filter</label>
+                        <select id="historyCustomerFilter" onchange="window.renderPastOrders()" class="w-full border rounded-xl p-3 text-sm appearance-none bg-white focus:border-orange-500 outline-none">
+                            <option value="All">All Customers</option>
+                        </select>
+                    </div>
+                </div>
+
                 <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
                     <div class="p-6 border-b flex justify-between items-center">
                         <h3 class="font-bold text-gray-800">Order History</h3>
@@ -296,7 +308,46 @@
         </div>
     </div>
 
+    <!-- Bottom Tab Bar for Delivery Boy -->
+    <div class="fixed bottom-0 left-0 w-full bg-white shadow-[0_-5px_15px_rgba(0,0,0,0.05)] border-t border-gray-100 flex justify-around items-center z-40 pt-3 pb-4 md:pb-3">
+        <button onclick="window.switchSection('today-delivery', this)" class="nav-item bottom-nav-item flex-1 flex flex-col items-center justify-center gap-1.5 text-gray-400 transition hover:text-orange-500" data-section="today-delivery">
+            <div class="relative">
+                <i class="fas fa-calendar-day text-2xl"></i>
+                <span class="absolute -top-2 -right-3 bg-amber-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full shadow-sm" id="bottomTodayBadge">0</span>
+            </div>
+            <span class="text-[10px] font-bold uppercase tracking-widest mt-1">Today</span>
+        </button>
+        <button onclick="window.switchSection('performance', this)" class="nav-item bottom-nav-item flex-1 flex flex-col items-center justify-center gap-1.5 text-gray-400 transition hover:text-orange-500" data-section="performance">
+            <i class="fas fa-chart-line text-2xl"></i>
+            <span class="text-[10px] font-bold uppercase tracking-widest mt-1">Performance</span>
+        </button>
+    </div>
+
     <!-- Modals -->
+    <!-- Payment Confirmation Modal -->
+    <div id="paymentConfirmModal" class="fixed inset-0 flex items-center justify-center modal-overlay hidden z-[150]">
+        <div class="modal-content bg-white rounded-3xl shadow-2xl w-full max-w-sm mx-4 overflow-hidden">
+            <div class="bg-emerald-600 p-5 md:p-6 text-white flex justify-between items-center">
+                <h3 class="font-bold text-lg">Final Payment</h3>
+                <button onclick="window.closePaymentModal()"><i class="fas fa-times text-xl"></i></button>
+            </div>
+            <div class="p-6 md:p-8">
+                <p class="text-sm text-gray-500 mb-4">Select the actual payment method used by the customer:</p>
+                <div class="flex flex-col gap-3 mb-6">
+                    <label class="cursor-pointer flex items-center p-4 border rounded-2xl bg-gray-50 hover:bg-emerald-50 transition border-gray-200">
+                        <input type="radio" name="finalPaymentMode" value="COD" id="payConfirmCOD" class="mr-3 w-5 h-5 accent-emerald-600">
+                        <span class="font-bold text-gray-800">Cash / COD</span>
+                    </label>
+                    <label class="cursor-pointer flex items-center p-4 border rounded-2xl bg-gray-50 hover:bg-emerald-50 transition border-gray-200">
+                        <input type="radio" name="finalPaymentMode" value="Prepaid" id="payConfirmPrepaid" class="mr-3 w-5 h-5 accent-emerald-600">
+                        <span class="font-bold text-gray-800">Online / Prepaid</span>
+                    </label>
+                </div>
+                <button onclick="window.confirmDeliveryPayment()" class="w-full bg-emerald-600 text-white font-black py-3 md:py-4 rounded-xl md:rounded-2xl shadow-lg hover:bg-emerald-700 transition active:scale-95 text-sm md:text-base">Complete Delivery</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Confirmation Modal -->
     <div id="confirmModal" class="fixed inset-0 flex items-center justify-center modal-overlay hidden z-[200]">
         <div class="modal-content bg-white rounded-3xl shadow-2xl w-full max-w-sm mx-4 p-8 text-center">
@@ -392,14 +443,16 @@
                     </div>
                 </div>
 
-                <div id="assignActions" class="grid grid-cols-2 gap-3">
-                    <button onclick="window.callCustomer()" class="bg-green-600 text-white py-3 md:py-4 rounded-xl md:rounded-2xl font-black shadow-lg shadow-green-100 active:scale-95 transition flex items-center justify-center text-sm md:text-base"><i class="fas fa-phone mr-2"></i>Call</button>
-                    <button onclick="window.whatsappCustomer()" class="bg-emerald-500 text-white py-3 md:py-4 rounded-xl md:rounded-2xl font-black shadow-lg shadow-emerald-100 active:scale-95 transition flex items-center justify-center text-sm md:text-base"><i class="fab fa-whatsapp mr-2"></i>WhatsApp</button>
+                <div id="assignActions" class="flex gap-2">
+                    <button onclick="window.callCustomer('primary')" class="flex-1 bg-green-600 text-white py-3 md:py-4 rounded-xl md:rounded-2xl font-black shadow-lg shadow-green-100 active:scale-95 transition flex items-center justify-center text-sm md:text-base"><i class="fas fa-phone mr-2"></i>Call</button>
+                    <button onclick="window.callCustomer('alt')" id="assignBtnCallAlt" style="display: none;" class="flex-1 bg-teal-500 text-white py-3 md:py-4 rounded-xl md:rounded-2xl font-black shadow-lg shadow-teal-100 active:scale-95 transition items-center justify-center text-sm md:text-base"><i class="fas fa-phone-alt mr-2"></i>Alt Call</button>
+                    <button onclick="window.whatsappCustomer()" class="flex-1 bg-emerald-500 text-white py-3 md:py-4 rounded-xl md:rounded-2xl font-black shadow-lg shadow-emerald-100 active:scale-95 transition flex items-center justify-center text-sm md:text-base"><i class="fab fa-whatsapp mr-2"></i>WhatsApp</button>
                 </div>
                 <div id="todayActions" class="space-y-4">
-                    <div class="grid grid-cols-2 gap-3">
-                        <button onclick="window.callCustomer()" class="bg-green-600 text-white py-3 md:py-4 rounded-xl md:rounded-2xl font-black shadow-lg active:scale-95 transition flex items-center justify-center text-sm md:text-base"><i class="fas fa-phone mr-2"></i>Call</button>
-                        <button id="detailMapLinkBtn" onclick="window.openGoogleMaps()" class="bg-blue-600 text-white py-3 md:py-4 rounded-xl md:rounded-2xl font-black shadow-lg active:scale-95 transition text-center flex items-center justify-center text-sm md:text-base"><i class="fas fa-location-arrow mr-2"></i>Map</button>
+                    <div class="flex gap-2 w-full">
+                        <button onclick="window.callCustomer('primary')" class="flex-1 bg-green-600 text-white py-3 md:py-4 rounded-xl md:rounded-2xl font-black shadow-lg active:scale-95 transition flex items-center justify-center text-sm md:text-base"><i class="fas fa-phone mr-2"></i>Call</button>
+                        <button onclick="window.callCustomer('alt')" id="todayBtnCallAlt" style="display: none;" class="flex-1 bg-teal-500 text-white py-3 md:py-4 rounded-xl md:rounded-2xl font-black shadow-lg active:scale-95 transition items-center justify-center text-sm md:text-base"><i class="fas fa-phone-alt mr-2"></i>Alt</button>
+                        <button id="detailMapLinkBtn" onclick="window.openGoogleMaps()" class="flex-1 bg-blue-600 text-white py-3 md:py-4 rounded-xl md:rounded-2xl font-black shadow-lg active:scale-95 transition text-center flex items-center justify-center text-sm md:text-base"><i class="fas fa-location-arrow mr-2"></i>Map</button>
                     </div>
                     <div class="grid grid-cols-2 gap-3 pt-4 border-t">
                         <button id="detailPickupBtn" onclick="window.pickupCurrentOrder()" class="bg-orange-500 text-white py-3 md:py-5 rounded-xl md:rounded-2xl font-black disabled:bg-gray-100 transition active:scale-95 text-sm md:text-base">Pickup</button>
@@ -444,6 +497,7 @@
         window.currentDetailDeliveryIndex = -1;
         window.selectedDriverFilter = null;
         window.pendingConfirmAction = null; // Used for global confirmation modal
+        window.pendingDeliveryCompletion = null; // Used for capturing exact delivery time
 
         // --- Hoisted Logic Functions ---
         function formatTimer(startISO, endISO) {
@@ -582,10 +636,40 @@
             document.getElementById('todayCompleted').textContent = todayAll.filter(d => d.status === 'delivered').length;
         }
 
+        function updateHistoryFilters() {
+            const driverSel = document.getElementById('historyDriverFilter');
+            if (driverSel) {
+                const cur = driverSel.value;
+                driverSel.innerHTML = '<option value="All">All Drivers</option>' + window.drivers.map(d => `<option value="${d.name}">${d.name}</option>`).join('');
+                driverSel.value = cur || 'All';
+            }
+            const custSel = document.getElementById('historyCustomerFilter');
+            if (custSel) {
+                const cur = custSel.value;
+                custSel.innerHTML = '<option value="All">All Customers</option>' + window.customers.map(c => `<option value="${c.name}">${c.name} (${c.id})</option>`).join('');
+                custSel.value = cur || 'All';
+            }
+        }
+
         function renderPastOrders() {
             const tbody = document.getElementById('pastOrdersTableBody');
             if (!tbody) return;
-            const past = window.deliveries.filter(d => d.status === 'delivered' || d.status === 'cancelled');
+
+            // Get filter values
+            const fromDate = document.getElementById('historyFromDate')?.value;
+            const toDate = document.getElementById('historyToDate')?.value;
+            const driverQ = document.getElementById('historyDriverFilter')?.value;
+            const customerQ = document.getElementById('historyCustomerFilter')?.value;
+
+            // Filter base (delivered or cancelled)
+            let past = window.deliveries.filter(d => d.status === 'delivered' || d.status === 'cancelled');
+
+            // Apply specific filters
+            if (fromDate) past = past.filter(d => d.date >= fromDate);
+            if (toDate) past = past.filter(d => d.date <= toDate);
+            if (driverQ && driverQ !== 'All') past = past.filter(d => d.driverName === driverQ);
+            if (customerQ && customerQ !== 'All') past = past.filter(d => d.customerName === customerQ);
+
             tbody.innerHTML = past.slice().reverse().map(d => {
                 const realIdx = window.deliveries.indexOf(d);
                 const pTime = d.pickupTime ? new Date(d.pickupTime).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit', hour12: true}) : '-';
@@ -665,6 +749,7 @@
         window.renderAssignCards = renderAssignCards;
         window.renderTodayCards = renderTodayCards;
         window.renderPastOrders = renderPastOrders;
+        window.updateHistoryFilters = updateHistoryFilters;
         window.setDriverFilter = setDriverFilter;
         window.renderDriverToggles = renderDriverToggles;
         window.renderPerformance = renderPerformance;
@@ -682,10 +767,29 @@
 
         window.switchSection = (sectionId, navEl) => {
             document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
-            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active','bg-slate-800','text-white'));
+            
+            // Remove active classes from all nav buttons
+            document.querySelectorAll('.nav-item').forEach(n => {
+                n.classList.remove('active', 'bg-slate-800', 'text-white');
+                if (n.classList.contains('bottom-nav-item')) {
+                    n.classList.remove('text-orange-600');
+                    n.classList.add('text-gray-400');
+                }
+            });
+            
             const target = document.getElementById(sectionId);
             if (target) target.classList.add('active');
-            if (navEl) navEl.classList.add('active', 'bg-slate-800', 'text-white');
+            
+            // Highlight the selected nav button
+            document.querySelectorAll(`.nav-item[data-section="${sectionId}"]`).forEach(el => {
+                el.classList.add('active');
+                if (el.classList.contains('bottom-nav-item')) {
+                    el.classList.remove('text-gray-400');
+                    el.classList.add('text-orange-600');
+                } else {
+                    el.classList.add('bg-slate-800', 'text-white');
+                }
+            });
             
             const titles = { 'add-customer': ['Add Customer', 'Database'], 'assign-delivery': ['Assign', 'Tasks'], 'past-orders': ['Past Orders', 'History'], 'settings': ['Settings', 'Drivers'], 'analysis': ['Analysis', 'Trends'], 'today-delivery': ["Today's Delivery", 'Driver View'], 'performance': ['Performance', 'Efficiency'] };
             const [title, subtitle] = titles[sectionId] || ['GURU System', 'Delivery Management'];
@@ -729,7 +833,11 @@
 
             document.getElementById('detailOrderId').textContent = d.id;
             document.getElementById('detailCustName').textContent = d.customerName;
-            document.getElementById('detailCustPhone').textContent = d.customerPhone;
+            
+            // Show both numbers if altPhone exists
+            const combinedPhone = d.customerPhone + (d.customerAltPhone ? ` / ${d.customerAltPhone}` : '');
+            document.getElementById('detailCustPhone').textContent = combinedPhone;
+            
             document.getElementById('detailCustAddress').textContent = d.customerAddress;
             document.getElementById('detailPaymentMode').textContent = d.payment;
             document.getElementById('detailAmount').textContent = '₹' + d.amount;
@@ -750,9 +858,16 @@
                 extraInfo.classList.add('hidden');
             }
 
-            // Button Visibility
+            // Button Visibility Configuration
             document.getElementById('assignActions').classList.toggle('hidden', context !== 'assign');
             document.getElementById('todayActions').classList.toggle('hidden', context !== 'today');
+            
+            // Toggle Alt Call Buttons based on whether alternate phone exists
+            const hasAlt = !!d.customerAltPhone;
+            const todayAltBtn = document.getElementById('todayBtnCallAlt');
+            const assignAltBtn = document.getElementById('assignBtnCallAlt');
+            if (todayAltBtn) todayAltBtn.style.display = hasAlt ? 'flex' : 'none';
+            if (assignAltBtn) assignAltBtn.style.display = hasAlt ? 'flex' : 'none';
             
             const mapBtn = document.getElementById('detailMapLinkBtn');
             if (mapBtn) { 
@@ -826,7 +941,10 @@
             const cust = window.customers.find(c => c.id === custId);
             const driverIdx = document.getElementById('assignDriver').value;
             const driver = window.drivers[driverIdx];
-            const data = { id: 'ORD-' + (Date.now() % 1000000), customerName: cust.name, customerPhone: cust.phone, customerAddress: cust.address, customerMapLink: cust.mapLink, driverName: driver.name, amount: document.getElementById('assignAmount').value, payment: document.querySelector('input[name="paymentMode"]:checked').value, date: document.getElementById('assignDate').value, status: 'pending', pickupTime: null, deliveryTime: null, totalTimeTaken: null };
+            
+            // Includes customerAltPhone inside the delivery data model
+            const data = { id: 'ORD-' + (Date.now() % 1000000), customerName: cust.name, customerPhone: cust.phone, customerAltPhone: cust.altPhone || '', customerAddress: cust.address, customerMapLink: cust.mapLink, driverName: driver.name, amount: document.getElementById('assignAmount').value, payment: document.querySelector('input[name="paymentMode"]:checked').value, date: document.getElementById('assignDate').value, status: 'pending', pickupTime: null, deliveryTime: null, totalTimeTaken: null };
+            
             try {
                 await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'deliveries'), data);
                 window.closeAssignModal(); window.showToast("Task Created", "success");
@@ -842,16 +960,39 @@
             } catch (err) { window.showToast("Sync Error", "error"); }
         };
 
-        window.deliverCurrentOrder = async () => {
+        window.deliverCurrentOrder = () => {
             const d = window.deliveries[window.currentDetailDeliveryIndex];
-            const now = new Date();
+            window.pendingDeliveryCompletion = new Date(); // Capture exact delivery time to stop the clock
+            
+            // Pre-select original payment mode
+            const isPrepaid = d.payment.toLowerCase() === 'prepaid';
+            document.getElementById('payConfirmPrepaid').checked = isPrepaid;
+            document.getElementById('payConfirmCOD').checked = !isPrepaid;
+
+            // Hide detail modal, show payment modal
+            document.getElementById('deliveryDetailModal').classList.add('hidden');
+            document.getElementById('paymentConfirmModal').classList.remove('hidden');
+        };
+
+        window.closePaymentModal = () => {
+            document.getElementById('paymentConfirmModal').classList.add('hidden');
+            window.pendingDeliveryCompletion = null;
+        };
+
+        window.confirmDeliveryPayment = async () => {
+            const d = window.deliveries[window.currentDetailDeliveryIndex];
+            const now = window.pendingDeliveryCompletion || new Date();
+            const finalPayment = document.querySelector('input[name="finalPaymentMode"]:checked').value;
+
             try {
                 await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'deliveries', d.firebaseId), { 
                     status: 'delivered', 
+                    payment: finalPayment, 
                     deliveryTime: now.toISOString(), 
                     totalTimeTaken: window.formatTimer(d.pickupTime, now.toISOString()) 
                 });
-                window.closeDetailModal(); 
+                window.closePaymentModal(); 
+                window.currentDetailDeliveryIndex = -1;
                 window.showToast("Delivered! 🎉", "success");
             } catch (err) { window.showToast("Sync Error", "error"); }
         };
@@ -874,15 +1015,20 @@ Thank you for choosing Guru Sampoorna. We truly appreciate your trust in us 🙏
             window.open(`https://wa.me/91${d.customerPhone}?text=${encodeURIComponent(msg)}`, '_blank');
         };
 
-        // Smart Google Maps Opening Logic
-        window.openGoogleMaps = (link) => {
+        // Smart Google Maps Opening Logic - Fixed to bypass search parameter if an exact URL is found
+        window.openGoogleMaps = () => {
             const d = window.deliveries[window.currentDetailDeliveryIndex];
-            const mapUrl = link || (d ? d.customerMapLink : null);
+            const mapUrl = d ? d.customerMapLink : null;
             if (!mapUrl) return;
 
-            // Using the Google Maps Search API format often triggers the app directly on mobile
-            const finalUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapUrl)}`;
-            window.open(finalUrl, '_blank');
+            // If it starts with http or https, assume it's a direct Google Maps valid link and open directly
+            if (mapUrl.startsWith('http://') || mapUrl.startsWith('https://')) {
+                window.open(mapUrl, '_blank');
+            } else {
+                // Otherwise fallback to search query (like normal text address)
+                const finalUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapUrl)}`;
+                window.open(finalUrl, '_blank');
+            }
         };
 
         window.searchCustomersForAssign = () => {
@@ -908,10 +1054,19 @@ Thank you for choosing Guru Sampoorna. We truly appreciate your trust in us 🙏
         window.deleteDelivery = async (id) => { window.openConfirmModal(async () => { await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'deliveries', id)); window.showToast("Order Deleted", "error"); }); };
         window.clearAllData = async () => { window.openConfirmModal(async () => { const b = writeBatch(db); const cols = ['customers', 'drivers', 'deliveries']; for(let col of cols) { const s = await getDocs(collection(db, 'artifacts', appId, 'public', 'data', col)); s.forEach(d => b.delete(d.ref)); } await b.commit(); window.showToast("Cloud Wiped", "error"); }); };
         
-        window.updateTodayBadge = () => { const today = new Date().toISOString().split('T')[0]; const badge = document.getElementById('todayBadge'); if(badge) badge.textContent = window.deliveries.filter(d => d.date === today && d.status !== 'delivered').length; };
-        window.callCustomer = () => {
+        window.updateTodayBadge = () => { 
+            const today = new Date().toISOString().split('T')[0]; 
+            const count = window.deliveries.filter(d => d.date === today && d.status !== 'delivered').length;
+            const badge = document.getElementById('bottomTodayBadge'); 
+            if(badge) badge.textContent = count; 
+        };
+        
+        window.callCustomer = (type = 'primary') => {
             const d = window.deliveries[window.currentDetailDeliveryIndex];
-            if(d) window.open('tel:+91' + d.customerPhone, '_self');
+            if(d) {
+                const phoneToCall = (type === 'alt' && d.customerAltPhone) ? d.customerAltPhone : d.customerPhone;
+                window.open('tel:+91' + phoneToCall, '_self');
+            }
         };
 
         // --- Firebase Init ---
@@ -923,12 +1078,14 @@ Thank you for choosing Guru Sampoorna. We truly appreciate your trust in us 🙏
                     onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'customers'), (snap) => {
                         window.customers = snap.docs.map(d => ({...d.data(), firebaseId: d.id}));
                         renderCustomerTable();
+                        if(window.updateHistoryFilters) window.updateHistoryFilters();
                     });
                     onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'drivers'), (snap) => {
                         window.drivers = snap.docs.map(d => ({...d.data(), firebaseId: d.id}));
                         renderDriverTable();
                         renderDriverToggles();
                         updatePerfDriverSelect();
+                        if(window.updateHistoryFilters) window.updateHistoryFilters();
                     });
                     onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'deliveries'), (snap) => {
                         window.deliveries = snap.docs.map(d => ({...d.data(), firebaseId: d.id}));
@@ -957,7 +1114,7 @@ Thank you for choosing Guru Sampoorna. We truly appreciate your trust in us 🙏
             });
         }, 1000);
 
-        document.addEventListener('keydown', e => { if (e.key === 'Escape') { window.closeCustomerModal(); window.closeAssignModal(); window.closeDetailModal(); window.closeSidebar(); window.closeConfirmModal(); } });
+        document.addEventListener('keydown', e => { if (e.key === 'Escape') { window.closeCustomerModal(); window.closeAssignModal(); window.closeDetailModal(); window.closeSidebar(); window.closeConfirmModal(); window.closePaymentModal(); } });
     </script>
 </body>
 </html>
