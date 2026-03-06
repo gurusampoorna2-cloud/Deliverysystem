@@ -667,7 +667,7 @@
 
         window.verifyPin = () => {
             const pin = document.getElementById('adminPinInput').value;
-            if (pin === '91113111') {
+            if (pin === '9131') {
                 window.isSystemUnlocked = true;
                 window.closePinModal();
                 if (window.pendingSection) {
@@ -784,7 +784,10 @@
                     <div>
                         <div class="flex justify-between items-start mb-4">
                             <span class="font-mono text-[10px] font-black text-gray-400 uppercase tracking-widest">${d.customerId || d.id}</span>
-                            <span class="status-badge ${d.status === 'in-transit' ? 'bg-orange-50 text-orange-600' : 'bg-purple-50 text-purple-600'} uppercase tracking-widest text-[8px]">${d.status === 'in-transit' ? 'IN TRANSIT' : 'ASSIGNED'}</span>
+                            <div class="flex gap-1.5">
+                                ${d.notified ? '<span class="status-badge bg-green-100 text-green-700 uppercase tracking-widest text-[8px]"><i class="fab fa-whatsapp mr-1"></i>NOTIFIED</span>' : ''}
+                                <span class="status-badge ${d.status === 'in-transit' ? 'bg-orange-50 text-orange-600' : 'bg-purple-50 text-purple-600'} uppercase tracking-widest text-[8px]">${d.status === 'in-transit' ? 'IN TRANSIT' : 'ASSIGNED'}</span>
+                            </div>
                         </div>
                         <p class="font-black text-gray-800 text-lg leading-tight mb-4">${d.customerName}</p>
                     </div>
@@ -1034,6 +1037,53 @@
         window.renderPerformance = renderPerformance;
         window.renderAnalysis = renderAnalysis;
         window.updatePerfDriverSelect = updatePerfDriverSelect;
+
+        window.openEditPastOrderModal = (firebaseId) => {
+            const d = window.deliveries.find(x => x.firebaseId === firebaseId);
+            if (!d) return;
+
+            document.getElementById('editPastOrderId').value = firebaseId;
+            document.getElementById('editPastDriver').innerHTML = window.drivers.map((drv) => `<option value="${drv.name}" ${drv.name === d.driverName ? 'selected' : ''}>${drv.name}</option>`).join('');
+            document.getElementById('editPastAmount').value = d.amount || '';
+            
+            // Safely handle payment value to avoid crashes on old orders
+            const payStr = d.payment || 'Cash';
+            let payVal = payStr.toLowerCase() === 'cod' ? 'Cash' : payStr.charAt(0).toUpperCase() + payStr.slice(1).toLowerCase();
+            
+            // Fallback to Cash if string does not match select options
+            if (!['Cash', 'Online', 'Prepaid'].includes(payVal)) {
+                payVal = 'Cash';
+            }
+            
+            document.getElementById('editPastPayment').value = payVal;
+            document.getElementById('editPastDate').value = d.date || '';
+            
+            document.getElementById('editPastOrderModal').classList.remove('hidden');
+        };
+
+        window.closeEditPastOrderModal = () => {
+            document.getElementById('editPastOrderModal').classList.add('hidden');
+        };
+
+        window.submitEditPastOrder = async () => {
+            const editId = document.getElementById('editPastOrderId').value;
+            const driverName = document.getElementById('editPastDriver').value;
+            const amount = document.getElementById('editPastAmount').value;
+            const payment = document.getElementById('editPastPayment').value;
+            const date = document.getElementById('editPastDate').value;
+            
+            try {
+                await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'deliveries', editId), {
+                    driverName: driverName,
+                    amount: amount,
+                    payment: payment,
+                    date: date
+                });
+                window.closeEditPastOrderModal(); 
+                window.showToast("Order Updated", "success");
+            } catch (err) { window.showToast("Sync Error", "error"); }
+        };
+
 
         window.openSidebar = () => {
             document.getElementById('sidebar').classList.remove('hidden-sidebar');
@@ -1286,7 +1336,7 @@
                     // Create new task
                     const custId = document.getElementById('selCustId').textContent;
                     const cust = window.customers.find(c => c.id === custId);
-                    const data = { id: 'ORD-' + (Date.now() % 1000000), customerId: cust.id, customerName: cust.name, customerPhone: cust.phone, customerAltPhone: cust.altPhone || '', customerAddress: cust.address, customerMapLink: cust.mapLink, driverName: driver.name, amount: amount, payment: payment, date: date, status: 'pending', pickupTime: null, deliveryTime: null, totalTimeTaken: null };
+                    const data = { id: 'ORD-' + (Date.now() % 1000000), customerId: cust.id, customerName: cust.name, customerPhone: cust.phone, customerAltPhone: cust.altPhone || '', customerAddress: cust.address, customerMapLink: cust.mapLink, driverName: driver.name, amount: amount, payment: payment, date: date, status: 'pending', pickupTime: null, deliveryTime: null, totalTimeTaken: null, notified: false };
                     await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'deliveries'), data);
                     window.closeAssignModal(); window.showToast("Task Created", "success");
                 }
@@ -1352,7 +1402,7 @@
             } catch (err) { window.showToast("Sync Error", "error"); }
         };
 
-        window.whatsappCustomer = () => {
+        window.whatsappCustomer = async () => {
             const d = window.deliveries[window.currentDetailDeliveryIndex];
             const drv = window.drivers.find(dr => dr.name === d.driverName);
             
@@ -1367,6 +1417,14 @@ Your order will be delivered within the next 3–4 hours.
 
 Thank you for choosing Guru Sampoorna. We truly appreciate your trust in us 🙏`;
             
+            try {
+                // Update Firestore to mark as notified
+                await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'deliveries', d.firebaseId), { notified: true });
+                window.showToast("Marked as Notified", "success");
+            } catch (err) { 
+                console.error("Failed to update notification status", err); 
+            }
+
             window.open(`https://wa.me/91${d.customerPhone}?text=${encodeURIComponent(msg)}`, '_blank');
         };
 
