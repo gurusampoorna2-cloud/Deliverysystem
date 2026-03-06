@@ -246,7 +246,7 @@
                         <table class="w-full text-sm">
                             <thead class="bg-gray-50 text-gray-500 font-bold uppercase text-[10px]">
                                 <tr>
-                                    <th class="px-5 py-4 text-left">Order ID</th>
+                                    <th class="px-5 py-4 text-left">Cust ID</th>
                                     <th class="px-5 py-4 text-left">Customer</th>
                                     <th class="px-5 py-4 text-left">Driver</th>
                                     <th class="px-5 py-4 text-left">Date</th>
@@ -766,7 +766,8 @@
             const filterDate = document.getElementById('assignFilterDate')?.value;
             const filterDriver = document.getElementById('assignFilterDriver')?.value;
 
-            let active = window.deliveries.filter(d => d.status === 'pending');
+            // Show pending and in-transit orders so they can be edited until delivered
+            let active = window.deliveries.filter(d => d.status === 'pending' || d.status === 'in-transit');
 
             // Apply filters
             if (filterDate) active = active.filter(d => d.date === filterDate);
@@ -779,11 +780,11 @@
             container.innerHTML = active.map(d => {
                 const realIdx = window.deliveries.indexOf(d);
                 return `
-                <div class="delivery-card bg-white rounded-3xl shadow-sm border-l-[6px] border-purple-400 p-6 transition hover:shadow-lg cursor-pointer flex flex-col justify-between" onclick="window.openDeliveryDetail(${realIdx}, 'assign')">
+                <div class="delivery-card bg-white rounded-3xl shadow-sm border-l-[6px] ${d.status === 'in-transit' ? 'border-orange-400' : 'border-purple-400'} p-6 transition hover:shadow-lg cursor-pointer flex flex-col justify-between" onclick="window.openDeliveryDetail(${realIdx}, 'assign')">
                     <div>
                         <div class="flex justify-between items-start mb-4">
-                            <span class="font-mono text-[10px] font-black text-gray-300 uppercase tracking-widest">${d.id}</span>
-                            <span class="status-badge bg-purple-50 text-purple-600 uppercase tracking-widest text-[8px]">ASSIGNED</span>
+                            <span class="font-mono text-[10px] font-black text-gray-400 uppercase tracking-widest">${d.customerId || d.id}</span>
+                            <span class="status-badge ${d.status === 'in-transit' ? 'bg-orange-50 text-orange-600' : 'bg-purple-50 text-purple-600'} uppercase tracking-widest text-[8px]">${d.status === 'in-transit' ? 'IN TRANSIT' : 'ASSIGNED'}</span>
                         </div>
                         <p class="font-black text-gray-800 text-lg leading-tight mb-4">${d.customerName}</p>
                     </div>
@@ -812,7 +813,7 @@
                 return `
                 <div class="delivery-card bg-white rounded-3xl shadow-sm border-l-[6px] ${d.status === 'in-transit' ? 'border-orange-400' : 'border-blue-400'} p-6 transition hover:shadow-lg cursor-pointer" onclick="window.openDeliveryDetail(${realIdx}, 'today')">
                     <div class="flex justify-between items-start mb-4">
-                        <span class="font-mono text-[10px] font-black text-gray-300 uppercase tracking-widest">${d.id}</span>
+                        <span class="font-mono text-[10px] font-black text-gray-400 uppercase tracking-widest">${d.customerId || d.id}</span>
                         <span class="status-badge ${d.status === 'in-transit' ? 'bg-orange-50 text-orange-600' : 'bg-blue-50 text-blue-600'} text-[8px] uppercase tracking-widest">${d.status.toUpperCase()}</span>
                     </div>
                     <p class="font-black text-gray-800 text-lg leading-tight">${d.customerName}</p>
@@ -892,7 +893,7 @@
                 const dTime = d.deliveryTime ? new Date(d.deliveryTime).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit', hour12: true}) : '-';
                 return `
                 <tr class="hover:bg-gray-50 transition">
-                    <td class="px-5 py-4 font-mono text-[10px] font-bold text-blue-500 cursor-pointer hover:underline" onclick="window.openDeliveryDetail(${realIdx}, 'history')">${d.id}</td>
+                    <td class="px-5 py-4 font-mono text-[10px] font-bold text-blue-500 cursor-pointer hover:underline" onclick="window.openDeliveryDetail(${realIdx}, 'history')">${d.customerId || d.id}</td>
                     <td class="px-5 py-4 font-bold text-gray-800">${d.customerName}</td>
                     <td class="px-5 py-4 text-gray-400 font-medium">${d.driverName}</td>
                     <td class="px-5 py-4 text-xs text-gray-400 font-bold uppercase tracking-tighter">${window.formatDateDDMMYYYY(d.date)}</td>
@@ -987,9 +988,9 @@
             // Top Customers Table Logic
             const custStats = {};
             del.forEach(d => {
-                const key = d.customerPhone || d.customerName; // Best unique identifier
+                const key = d.customerId || d.customerPhone || d.customerName; // Best unique identifier
                 if (!custStats[key]) {
-                    custStats[key] = { name: d.customerName, phone: d.customerPhone, orders: 0, spent: 0 };
+                    custStats[key] = { id: d.customerId, name: d.customerName, phone: d.customerPhone, orders: 0, spent: 0 };
                 }
                 custStats[key].orders += 1;
                 custStats[key].spent += parseFloat(d.amount || 0);
@@ -1002,7 +1003,7 @@
                 tbody.innerHTML = sortedCustomers.map((c, idx) => `
                     <tr class="hover:bg-green-50/50 transition">
                         <td class="px-5 py-4 font-black text-gray-400">#${idx + 1}</td>
-                        <td class="px-5 py-4 font-bold text-gray-800">${c.name} <span class="block text-[10px] text-gray-400 font-normal">+91 ${c.phone}</span></td>
+                        <td class="px-5 py-4 font-bold text-gray-800">${c.name} ${c.id ? `<span class="text-xs text-gray-400 ml-1">(${c.id})</span>` : ''} <span class="block text-[10px] text-gray-400 font-normal">+91 ${c.phone}</span></td>
                         <td class="px-5 py-4 text-center font-black text-blue-600">${c.orders}</td>
                         <td class="px-5 py-4 text-right font-black text-green-600">₹${c.spent.toLocaleString()}</td>
                     </tr>
@@ -1140,7 +1141,7 @@
 
             // Customer section (readonly visually)
             document.getElementById('assignSearchContainer').classList.add('hidden');
-            document.getElementById('selCustId').textContent = "Customer Details Locked"; 
+            document.getElementById('selCustId').textContent = d.customerId || "Locked Details"; 
             document.getElementById('selCustName').textContent = d.customerName;
             document.getElementById('selectedCustomerCard').classList.remove('hidden');
             
@@ -1158,8 +1159,8 @@
             const d = window.deliveries[idx];
             if(!d) return;
 
-            document.getElementById('detailOrderId').textContent = d.id;
-            document.getElementById('detailCustName').textContent = d.customerName;
+            document.getElementById('detailOrderId').textContent = d.customerId || d.id;
+            document.getElementById('detailCustName').innerHTML = d.customerName;
             
             // Show both numbers if altPhone exists
             const combinedPhone = d.customerPhone + (d.customerAltPhone ? ` / ${d.customerAltPhone}` : '');
@@ -1285,7 +1286,7 @@
                     // Create new task
                     const custId = document.getElementById('selCustId').textContent;
                     const cust = window.customers.find(c => c.id === custId);
-                    const data = { id: 'ORD-' + (Date.now() % 1000000), customerName: cust.name, customerPhone: cust.phone, customerAltPhone: cust.altPhone || '', customerAddress: cust.address, customerMapLink: cust.mapLink, driverName: driver.name, amount: amount, payment: payment, date: date, status: 'pending', pickupTime: null, deliveryTime: null, totalTimeTaken: null };
+                    const data = { id: 'ORD-' + (Date.now() % 1000000), customerId: cust.id, customerName: cust.name, customerPhone: cust.phone, customerAltPhone: cust.altPhone || '', customerAddress: cust.address, customerMapLink: cust.mapLink, driverName: driver.name, amount: amount, payment: payment, date: date, status: 'pending', pickupTime: null, deliveryTime: null, totalTimeTaken: null };
                     await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'deliveries'), data);
                     window.closeAssignModal(); window.showToast("Task Created", "success");
                 }
