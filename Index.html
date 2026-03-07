@@ -170,6 +170,8 @@
                     </button>
                 </div>
 
+                <div id="assignStatusToggle" class="flex flex-wrap gap-2 mb-6"></div>
+
                 <div class="bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-gray-200 mb-6 flex flex-col sm:flex-row flex-wrap gap-4 sm:items-end">
                     <div class="flex-1 w-full sm:w-auto min-w-[150px]">
                         <label class="block text-[10px] font-bold text-gray-400 uppercase mb-1 tracking-widest">Filter by Date</label>
@@ -617,6 +619,7 @@
         window.pendingDeliveryCompletion = null; // Used for capturing exact delivery time
         window.isSystemUnlocked = false; // PIN Lock state
         window.pendingSection = null; // Stored section to jump to after unlock
+        window.selectedAssignStatus = 'All'; // For Assign section toggle
 
         // --- Hoisted Logic Functions ---
         
@@ -762,6 +765,22 @@
             }
         }
 
+        window.setAssignStatusFilter = (status) => {
+            window.selectedAssignStatus = status;
+            window.renderAssignStatusToggles();
+            window.renderAssignCards();
+        };
+
+        window.renderAssignStatusToggles = () => {
+            const container = document.getElementById('assignStatusToggle');
+            if (!container) return;
+            const statuses = ['All', 'Assigned', 'In Transit'];
+            container.innerHTML = statuses.map(s => {
+                const isActive = window.selectedAssignStatus === s;
+                return `<button onclick="window.setAssignStatusFilter('${s}')" class="px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest border transition ${isActive ? 'bg-purple-600 text-white border-purple-700 shadow-lg scale-105' : 'bg-white text-gray-500 border-gray-200 hover:bg-gray-50'}">${s}</button>`;
+            }).join('');
+        };
+
         function renderAssignCards() {
             const container = document.getElementById('deliveryCardsContainer');
             if (!container) return;
@@ -772,6 +791,10 @@
 
             // Show pending and in-transit orders so they can be edited until delivered
             let active = window.deliveries.filter(d => d.status === 'pending' || d.status === 'in-transit');
+
+            // Apply status toggle filter
+            if (window.selectedAssignStatus === 'Assigned') active = active.filter(d => d.status === 'pending');
+            if (window.selectedAssignStatus === 'In Transit') active = active.filter(d => d.status === 'in-transit');
 
             // Apply filters
             if (filterDate) active = active.filter(d => d.date === filterDate);
@@ -1046,6 +1069,8 @@
         window.updateAssignFilters = updateAssignFilters;
         window.setDriverFilter = setDriverFilter;
         window.renderDriverToggles = renderDriverToggles;
+        window.renderAssignStatusToggles = window.renderAssignStatusToggles;
+        window.setAssignStatusFilter = window.setAssignStatusFilter;
         window.renderPerformance = renderPerformance;
         window.renderAnalysis = renderAnalysis;
         window.updatePerfDriverSelect = updatePerfDriverSelect;
@@ -1384,14 +1409,16 @@
             
             try {
                 if (editId) {
-                    // Update existing delivery task (only allows updating driver, amount, payment, and date)
+                    // Update existing delivery task, reset to pending, and clear pickup time
                     await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'deliveries', editId), {
                         driverName: driver.name,
                         amount: amount,
                         payment: payment,
-                        date: date
+                        date: date,
+                        status: 'pending',
+                        pickupTime: null
                     });
-                    window.closeAssignModal(); window.showToast("Task Updated", "success");
+                    window.closeAssignModal(); window.showToast("Task Updated & Reset", "success");
                 } else {
                     // Create new task
                     const custId = document.getElementById('selCustId').textContent;
@@ -1466,16 +1493,23 @@
             const d = window.deliveries[window.currentDetailDeliveryIndex];
             const drv = window.drivers.find(dr => dr.name === d.driverName);
             
-            const msg = `Hello ${d.customerName},
+            // Construct the dynamic tracking link with custId
+            let trackingUrl = drv?.trackingLink || 'No link provided';
+            if (drv?.trackingLink) {
+                const separator = drv.trackingLink.includes('?') ? '&' : '?';
+                trackingUrl = `${drv.trackingLink}${separator}custId=${encodeURIComponent(d.customerId || d.id)}`;
+            }
+            
+            const msg = `Dear ${d.customerName},
 
-Your order has been successfully assigned to our delivery executive ${d.driverName} (📞 +91 ${drv?.phone || 'N/A'}).
+Your order is now out for delivery.
 
 You can track your delivery using the link below:
-🔗 ${drv?.trackingLink || 'No link provided'}
+ ${trackingUrl}
 
-Your order will be delivered within the next 3–4 hours.
+Your order will be delivered Shortly.
 
-Thank you for choosing Guru Sampoorna. We truly appreciate your trust in us 🙏`;
+Thank you for choosing Guru Sampoorna. We truly appreciate your trust in us `;
             
             try {
                 // Update Firestore to mark as notified
@@ -1563,6 +1597,7 @@ Thank you for choosing Guru Sampoorna. We truly appreciate your trust in us 🙏
                     });
                     onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'deliveries'), (snap) => {
                         window.deliveries = snap.docs.map(d => ({...d.data(), firebaseId: d.id}));
+                        if(window.renderAssignStatusToggles) window.renderAssignStatusToggles();
                         renderAssignCards();
                         renderTodayCards();
                         renderPastOrders();
