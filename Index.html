@@ -214,10 +214,8 @@
                         </select>
                     </div>
                     <div class="flex-1 w-full sm:w-auto min-w-[150px]">
-                        <label class="block text-[10px] font-bold text-gray-400 uppercase mb-1 tracking-widest">Customer Filter</label>
-                        <select id="historyCustomerFilter" onchange="window.renderPastOrders()" class="w-full border rounded-xl p-3 text-sm appearance-none bg-white focus:border-orange-500 outline-none">
-                            <option value="All">All Customers</option>
-                        </select>
+                        <label class="block text-[10px] font-bold text-gray-400 uppercase mb-1 tracking-widest">Search Customer</label>
+                        <input type="text" id="historyCustomerSearch" oninput="window.renderPastOrders()" placeholder="Name, ID or Phone..." class="w-full border rounded-xl p-3 text-sm focus:border-orange-500 outline-none">
                     </div>
                 </div>
 
@@ -248,6 +246,7 @@
                                 <tr>
                                     <th class="px-5 py-4 text-left">Cust ID</th>
                                     <th class="px-5 py-4 text-left">Customer</th>
+                                    <th class="px-5 py-4 text-left">Amount</th>
                                     <th class="px-5 py-4 text-left">Driver</th>
                                     <th class="px-5 py-4 text-left">Date</th>
                                     <th class="px-5 py-4 text-left">Pickup</th>
@@ -397,7 +396,7 @@
             <p class="text-sm text-gray-500 mb-6">Please enter the PIN to continue.</p>
             <input type="password" id="adminPinInput" onkeydown="if(event.key==='Enter') window.verifyPin()" placeholder="••••••••" class="w-full border p-4 rounded-2xl bg-gray-50 text-center text-2xl tracking-[0.5em] font-black focus:ring-2 focus:ring-blue-500 outline-none mb-6">
             <div class="flex gap-3">
-                <button onclick="window.closePinModal()" class="flex-1 bg-gray-100 text-gray-600 font-bold py-3 rounded-xl hover:bg-gray-200 transition">Cancel</button>
+                <button onclick="window.cancelPinModal()" class="flex-1 bg-gray-100 text-gray-600 font-bold py-3 rounded-xl hover:bg-gray-200 transition">Cancel</button>
                 <button onclick="window.verifyPin()" class="flex-1 bg-slate-800 text-white font-bold py-3 rounded-xl hover:bg-slate-900 transition shadow-lg">Unlock</button>
             </div>
         </div>
@@ -484,15 +483,15 @@
             </div>
             <form id="customerForm" class="p-6 md:p-8 space-y-4 max-h-[80vh] overflow-y-auto" onsubmit="window.saveCustomer(event)">
                 <input type="hidden" id="editIndex" value="-1">
-                <input type="text" id="custId" required placeholder="Customer ID (e.g. C001)" class="w-full border p-3 md:p-4 rounded-2xl bg-gray-50 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
-                <input type="text" id="custName" required placeholder="Full Name" class="w-full border p-3 md:p-4 rounded-2xl bg-gray-50 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                <input type="text" id="custId" oninput="window.checkDuplicateCustId()" required placeholder="Customer ID (e.g. C001)" class="w-full border p-3 md:p-4 rounded-2xl bg-gray-50 text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-colors">
+                <input type="text" id="custName" required placeholder="Full Name" class="w-full border p-3 md:p-4 rounded-2xl bg-gray-50 text-sm focus:ring-2 focus:ring-blue-500 outline-none disabled:opacity-50 disabled:cursor-not-allowed">
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <input type="tel" id="custPhone" required placeholder="Phone" class="w-full border p-3 md:p-4 rounded-2xl bg-gray-50 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
-                    <input type="tel" id="custAltPhone" placeholder="Alt Phone" class="w-full border p-3 md:p-4 rounded-2xl bg-gray-50 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                    <input type="tel" id="custPhone" required placeholder="Phone" class="w-full border p-3 md:p-4 rounded-2xl bg-gray-50 text-sm focus:ring-2 focus:ring-blue-500 outline-none disabled:opacity-50 disabled:cursor-not-allowed">
+                    <input type="tel" id="custAltPhone" placeholder="Alt Phone" class="w-full border p-3 md:p-4 rounded-2xl bg-gray-50 text-sm focus:ring-2 focus:ring-blue-500 outline-none disabled:opacity-50 disabled:cursor-not-allowed">
                 </div>
-                <textarea id="custAddress" required placeholder="Complete Delivery Address" class="w-full border p-3 md:p-4 rounded-2xl bg-gray-50 text-sm h-24 focus:ring-2 focus:ring-blue-500 outline-none"></textarea>
-                <input type="url" id="custMapLink" placeholder="Google Maps Link" class="w-full border p-3 md:p-4 rounded-2xl bg-gray-50 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
-                <button type="submit" id="modalSaveBtn" class="w-full bg-blue-600 text-white font-black py-3 md:py-4 rounded-2xl shadow-lg hover:bg-blue-700 transition active:scale-95">Save Customer</button>
+                <textarea id="custAddress" required placeholder="Complete Delivery Address" class="w-full border p-3 md:p-4 rounded-2xl bg-gray-50 text-sm h-24 focus:ring-2 focus:ring-blue-500 outline-none disabled:opacity-50 disabled:cursor-not-allowed"></textarea>
+                <input type="url" id="custMapLink" placeholder="Google Maps Link" class="w-full border p-3 md:p-4 rounded-2xl bg-gray-50 text-sm focus:ring-2 focus:ring-blue-500 outline-none disabled:opacity-50 disabled:cursor-not-allowed">
+                <button type="submit" id="modalSaveBtn" class="w-full bg-blue-600 text-white font-black py-3 md:py-4 rounded-2xl shadow-lg hover:bg-blue-700 transition active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed">Save Customer</button>
             </form>
         </div>
     </div>
@@ -662,6 +661,10 @@
 
         window.closePinModal = () => {
             document.getElementById('pinModal').classList.add('hidden');
+        };
+
+        window.cancelPinModal = () => {
+            window.closePinModal();
             window.pendingSection = null;
         };
 
@@ -669,9 +672,10 @@
             const pin = document.getElementById('adminPinInput').value;
             if (pin === '9131') {
                 window.isSystemUnlocked = true;
+                const target = window.pendingSection; // Save reference before closing
                 window.closePinModal();
-                if (window.pendingSection) {
-                    window.switchSection(window.pendingSection.id, window.pendingSection.el);
+                if (target) {
+                    window.switchSection(target.id, target.el);
                     window.pendingSection = null;
                 }
                 window.showToast("System Unlocked", "success");
@@ -842,12 +846,6 @@
                 driverSel.innerHTML = '<option value="All">All Drivers</option>' + window.drivers.map(d => `<option value="${d.name}">${d.name}</option>`).join('');
                 driverSel.value = cur || 'All';
             }
-            const custSel = document.getElementById('historyCustomerFilter');
-            if (custSel) {
-                const cur = custSel.value;
-                custSel.innerHTML = '<option value="All">All Customers</option>' + window.customers.map(c => `<option value="${c.name}">${c.name} (${c.id})</option>`).join('');
-                custSel.value = cur || 'All';
-            }
         }
 
         function renderPastOrders() {
@@ -858,7 +856,7 @@
             const fromDate = document.getElementById('historyFromDate')?.value;
             const toDate = document.getElementById('historyToDate')?.value;
             const driverQ = document.getElementById('historyDriverFilter')?.value;
-            const customerQ = document.getElementById('historyCustomerFilter')?.value;
+            const customerQ = document.getElementById('historyCustomerSearch')?.value?.toLowerCase().trim();
             const paymentQ = document.getElementById('historyPaymentFilter')?.value;
 
             // Filter base (delivered or cancelled)
@@ -868,13 +866,19 @@
             if (fromDate) past = past.filter(d => d.date >= fromDate);
             if (toDate) past = past.filter(d => d.date <= toDate);
             if (driverQ && driverQ !== 'All') past = past.filter(d => d.driverName === driverQ);
-            if (customerQ && customerQ !== 'All') past = past.filter(d => d.customerName === customerQ);
             if (paymentQ && paymentQ !== 'All') {
                 past = past.filter(d => {
                     const pay = (d.payment || '').toLowerCase();
                     const req = paymentQ.toLowerCase();
                     return pay === req || (req === 'cash' && pay === 'cod'); // map cod to cash for legacy support
                 });
+            }
+            if (customerQ) {
+                past = past.filter(d => 
+                    (d.customerName && d.customerName.toLowerCase().includes(customerQ)) || 
+                    (d.customerId && d.customerId.toLowerCase().includes(customerQ)) || 
+                    (d.customerPhone && d.customerPhone.includes(customerQ))
+                );
             }
 
             // Summary Calculation
@@ -890,7 +894,14 @@
             document.getElementById('summaryOnline').textContent = '₹' + sumOnline.toLocaleString();
             document.getElementById('summaryPrepaid').textContent = '₹' + sumPrepaid.toLocaleString();
 
-            tbody.innerHTML = past.slice().reverse().map(d => {
+            // Sort newest delivered first
+            past.sort((a, b) => {
+                const timeA = a.deliveryTime ? new Date(a.deliveryTime).getTime() : new Date(a.date).getTime();
+                const timeB = b.deliveryTime ? new Date(b.deliveryTime).getTime() : new Date(b.date).getTime();
+                return timeB - timeA;
+            });
+
+            tbody.innerHTML = past.map(d => {
                 const realIdx = window.deliveries.indexOf(d);
                 const pTime = d.pickupTime ? new Date(d.pickupTime).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit', hour12: true}) : '-';
                 const dTime = d.deliveryTime ? new Date(d.deliveryTime).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit', hour12: true}) : '-';
@@ -898,6 +909,7 @@
                 <tr class="hover:bg-gray-50 transition">
                     <td class="px-5 py-4 font-mono text-[10px] font-bold text-blue-500 cursor-pointer hover:underline" onclick="window.openDeliveryDetail(${realIdx}, 'history')">${d.customerId || d.id}</td>
                     <td class="px-5 py-4 font-bold text-gray-800">${d.customerName}</td>
+                    <td class="px-5 py-4 font-bold text-gray-800">₹${d.amount} <span class="block text-[10px] text-gray-400 font-normal uppercase tracking-widest">${d.payment}</span></td>
                     <td class="px-5 py-4 text-gray-400 font-medium">${d.driverName}</td>
                     <td class="px-5 py-4 text-xs text-gray-400 font-bold uppercase tracking-tighter">${window.formatDateDDMMYYYY(d.date)}</td>
                     <td class="px-5 py-4 text-xs font-bold text-orange-400">${pTime}</td>
@@ -908,7 +920,7 @@
                         <button onclick="window.openEditPastOrderModal('${d.firebaseId}')" class="text-blue-400 hover:text-blue-600 transition p-2"><i class="fas fa-edit"></i></button>
                         <button onclick="window.deleteDelivery('${d.firebaseId}')" class="text-red-400 hover:text-red-600 transition p-2"><i class="fas fa-trash-alt"></i></button>
                     </td>
-                </tr>`;}).join('') || '<tr><td colspan="9" class="text-center py-20 text-gray-300 italic">History empty</td></tr>';
+                </tr>`;}).join('') || '<tr><td colspan="10" class="text-center py-20 text-gray-300 italic">History empty</td></tr>';
             document.getElementById('pastOrderCount').textContent = past.length + ' orders';
         }
 
@@ -1094,6 +1106,34 @@
             document.getElementById('sidebarOverlay').classList.add('hidden-overlay');
         };
 
+        window.checkDuplicateCustId = () => {
+            const inputId = document.getElementById('custId').value.trim();
+            const editIdx = parseInt(document.getElementById('editIndex').value);
+            
+            const isDuplicate = window.customers.some((c, idx) => c.id.toLowerCase() === inputId.toLowerCase() && idx !== editIdx);
+            
+            const nameInput = document.getElementById('custName');
+            const phoneInput = document.getElementById('custPhone');
+            const altPhoneInput = document.getElementById('custAltPhone');
+            const addressInput = document.getElementById('custAddress');
+            const mapLinkInput = document.getElementById('custMapLink');
+            const saveBtn = document.getElementById('modalSaveBtn');
+            const custIdEl = document.getElementById('custId');
+
+            if (isDuplicate && inputId !== "") {
+                window.showToast("Customer ID already exists!", "error");
+                nameInput.disabled = true; phoneInput.disabled = true; altPhoneInput.disabled = true;
+                addressInput.disabled = true; mapLinkInput.disabled = true; saveBtn.disabled = true;
+                custIdEl.classList.add('border-red-500', 'focus:ring-red-500');
+                custIdEl.classList.remove('focus:ring-blue-500');
+            } else {
+                nameInput.disabled = false; phoneInput.disabled = false; altPhoneInput.disabled = false;
+                addressInput.disabled = false; mapLinkInput.disabled = false; saveBtn.disabled = false;
+                custIdEl.classList.remove('border-red-500', 'focus:ring-red-500');
+                custIdEl.classList.add('focus:ring-blue-500');
+            }
+        };
+
         window.switchSection = (sectionId, navEl) => {
             document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
             
@@ -1135,6 +1175,17 @@
         window.openCustomerModal = (idx) => {
             document.getElementById('customerModal').classList.remove('hidden');
             document.getElementById('customerForm').reset();
+            
+            // Reset form disabled states for duplicate check
+            document.getElementById('custName').disabled = false;
+            document.getElementById('custPhone').disabled = false;
+            document.getElementById('custAltPhone').disabled = false;
+            document.getElementById('custAddress').disabled = false;
+            document.getElementById('custMapLink').disabled = false;
+            document.getElementById('modalSaveBtn').disabled = false;
+            document.getElementById('custId').classList.remove('border-red-500', 'focus:ring-red-500');
+            document.getElementById('custId').classList.add('focus:ring-blue-500');
+
             if(idx !== undefined && window.customers[idx]) {
                 const c = window.customers[idx];
                 document.getElementById('editIndex').value = idx;
@@ -1263,7 +1314,16 @@
         window.saveCustomer = async (e) => {
             e.preventDefault();
             const editIdx = parseInt(document.getElementById('editIndex').value);
-            const data = { id: document.getElementById('custId').value.trim(), name: document.getElementById('custName').value.trim(), phone: document.getElementById('custPhone').value.trim(), altPhone: document.getElementById('custAltPhone').value.trim(), address: document.getElementById('custAddress').value.trim(), mapLink: document.getElementById('custMapLink').value.trim(), updatedAt: new Date().toISOString() };
+            const inputId = document.getElementById('custId').value.trim();
+
+            // Final fallback duplicate check right before save
+            const isDuplicate = window.customers.some((c, idx) => c.id.toLowerCase() === inputId.toLowerCase() && idx !== editIdx);
+            if (isDuplicate) {
+                window.showToast("Customer ID already exists!", "error");
+                return;
+            }
+
+            const data = { id: inputId, name: document.getElementById('custName').value.trim(), phone: document.getElementById('custPhone').value.trim(), altPhone: document.getElementById('custAltPhone').value.trim(), address: document.getElementById('custAddress').value.trim(), mapLink: document.getElementById('custMapLink').value.trim(), updatedAt: new Date().toISOString() };
             try {
                 if (editIdx >= 0) await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'customers', window.customers[editIdx].firebaseId), data);
                 else await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'customers'), data);
@@ -1528,7 +1588,7 @@ Thank you for choosing Guru Sampoorna. We truly appreciate your trust in us 🙏
             });
         }, 1000);
 
-        document.addEventListener('keydown', e => { if (e.key === 'Escape') { window.closeCustomerModal(); window.closeAssignModal(); window.closeDetailModal(); window.closeSidebar(); window.closeConfirmModal(); window.closePaymentModal(); window.closeEditPastOrderModal(); window.closePinModal(); } });
+        document.addEventListener('keydown', e => { if (e.key === 'Escape') { window.closeCustomerModal(); window.closeAssignModal(); window.closeDetailModal(); window.closeSidebar(); window.closeConfirmModal(); window.closePaymentModal(); window.closeEditPastOrderModal(); window.cancelPinModal(); } });
     </script>
 </body>
 </html>
