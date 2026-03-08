@@ -133,6 +133,9 @@
                             <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
                             <input type="text" id="customerSearchInput" oninput="window.renderCustomerTable()" placeholder="Search by name, ID or phone..." class="w-full bg-white border border-gray-200 pl-11 pr-4 py-3 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none shadow-sm transition">
                         </div>
+                        <button onclick="window.exportCustomersToCSV()" class="bg-green-600 hover:bg-green-700 text-white font-semibold px-6 py-3 rounded-xl shadow-lg transition whitespace-nowrap">
+                            <i class="fas fa-file-excel mr-2"></i>Export
+                        </button>
                         <button onclick="window.openCustomerModal()" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-3 rounded-xl shadow-lg transition whitespace-nowrap">
                             <i class="fas fa-plus mr-2"></i>Add New Customer
                         </button>
@@ -1224,6 +1227,43 @@
         };
         window.closeCustomerModal = () => document.getElementById('customerModal').classList.add('hidden');
 
+        window.exportCustomersToCSV = () => {
+            if (window.customers.length === 0) {
+                window.showToast("No customers to export", "error");
+                return;
+            }
+            
+            // Define CSV headers
+            const headers = ['Customer ID', 'Name', 'Phone', 'Alt Phone', 'Address', 'Map Link', 'Last Updated'];
+            
+            // Format data rows
+            const rows = window.customers.map(c => {
+                return [
+                    c.id,
+                    `"${(c.name || '').replace(/"/g, '""')}"`, // Handle commas in name
+                    c.phone,
+                    c.altPhone || '',
+                    `"${(c.address || '').replace(/"/g, '""')}"`, // Handle commas in address
+                    c.mapLink || '',
+                    c.updatedAt ? new Date(c.updatedAt).toLocaleString() : ''
+                ].join(',');
+            });
+            
+            const csvContent = [headers.join(','), ...rows].join('\n');
+            // Adding \uFEFF (Byte Order Mark) ensures Microsoft Excel reads UTF-8 characters correctly
+            const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            
+            const link = document.createElement("a");
+            link.setAttribute("href", url);
+            link.setAttribute("download", `customers_export_${new Date().toISOString().split('T')[0]}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            window.showToast("Data Exported to Excel", "success");
+        };
+
         window.openAssignModal = () => {
             document.getElementById('assignModal').classList.remove('hidden');
             
@@ -1502,12 +1542,12 @@
             
             const msg = `Dear ${d.customerName},
 
-Your order is now out for delivery.
+Your order is sucessfully assigned to our delivery executive.
 
-You can track your delivery using the link below:
+You can track your delivery status using the link below:
  ${trackingUrl}
 
-Your order will be delivered Shortly.
+Your order will be delivered shortly as per the route convenience.
 
 Thank you for choosing Guru Sampoorna. We truly appreciate your trust in us `;
             
