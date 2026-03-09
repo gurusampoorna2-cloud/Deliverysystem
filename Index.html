@@ -109,13 +109,14 @@
         <!-- Sections -->
         <div id="today-delivery" class="section active p-4 md:p-8 fade-in">
             <div class="max-w-6xl mx-auto">
-                <div id="driverFilterToggle" class="flex flex-wrap gap-2 mb-6"></div>
-                <div class="today-delivery-section rounded-2xl p-6 md:p-8 mb-6 shadow-sm border border-amber-200">
-                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6 text-center">
-                        <div><p class="text-3xl md:text-4xl font-black text-gray-800" id="todayTotal">0</p><p class="text-[9px] md:text-[10px] font-bold text-gray-500 uppercase tracking-widest">Total</p></div>
-                        <div><p class="text-3xl md:text-4xl font-black text-blue-600" id="todayPending">0</p><p class="text-[9px] md:text-[10px] font-bold text-gray-500 uppercase tracking-widest">Pending</p></div>
-                        <div><p class="text-3xl md:text-4xl font-black text-yellow-600" id="todayInTransit">0</p><p class="text-[9px] md:text-[10px] font-bold text-gray-500 uppercase tracking-widest">In Transit</p></div>
-                        <div><p class="text-3xl md:text-4xl font-black text-green-600" id="todayCompleted">0</p><p class="text-[9px] md:text-[10px] font-bold text-gray-500 uppercase tracking-widest">Completed</p></div>
+                <div id="driverFilterToggle" class="flex flex-wrap gap-2 mb-4"></div>
+                <div class="today-delivery-section rounded-2xl p-4 md:p-8 mb-6 shadow-sm border border-amber-200">
+                    <div class="grid grid-cols-4 md:grid-cols-5 gap-y-3 gap-x-2 md:gap-6 text-center items-center">
+                        <div><p class="text-2xl md:text-4xl font-black text-gray-800" id="todayTotal">0</p><p class="text-[8px] md:text-[10px] font-bold text-gray-500 uppercase tracking-tighter md:tracking-widest">Total</p></div>
+                        <div><p class="text-2xl md:text-4xl font-black text-blue-600" id="todayPending">0</p><p class="text-[8px] md:text-[10px] font-bold text-gray-500 uppercase tracking-tighter md:tracking-widest">Pending</p></div>
+                        <div><p class="text-2xl md:text-4xl font-black text-yellow-600" id="todayInTransit">0</p><p class="text-[8px] md:text-[10px] font-bold text-gray-500 uppercase tracking-tighter md:tracking-widest">Transit</p></div>
+                        <div><p class="text-2xl md:text-4xl font-black text-green-600" id="todayCompleted">0</p><p class="text-[8px] md:text-[10px] font-bold text-gray-500 uppercase tracking-tighter md:tracking-widest">Done</p></div>
+                        <div class="col-span-4 md:col-span-1 bg-white/60 rounded-xl py-2 md:py-3 px-2 border border-emerald-200 shadow-sm mt-1 md:mt-0"><p class="text-2xl md:text-4xl font-black text-emerald-600" id="todayCashCollected">₹0</p><p class="text-[9px] md:text-[10px] font-bold text-emerald-800 uppercase tracking-widest">Cash Collected</p></div>
                     </div>
                 </div>
                 <div id="todayCardsContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5"></div>
@@ -124,7 +125,7 @@
 
         <div id="add-customer" class="section p-4 md:p-8 fade-in">
             <div class="max-w-6xl mx-auto">
-                <div class="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
+                <div class="flex flex-col md:flex-row md:items-center justify-between mb-4 gap-4">
                     <div>
                         <h3 class="text-xl font-bold text-gray-800" id="customerCount">0 customers</h3>
                     </div>
@@ -141,6 +142,10 @@
                         </button>
                     </div>
                 </div>
+                
+                <!-- Customer Filter Toggle -->
+                <div id="customerFilterToggle" class="flex flex-wrap gap-2 mb-4"></div>
+
                 <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
                     <div class="overflow-x-auto">
                         <table class="w-full text-sm">
@@ -459,18 +464,38 @@
                     <label class="block text-[10px] font-bold text-gray-400 uppercase mb-1 tracking-widest">Driver</label>
                     <select id="editPastDriver" class="w-full border p-3 rounded-xl bg-gray-50 text-sm appearance-none focus:ring-2 focus:ring-orange-500 outline-none"></select>
                 </div>
-                <div>
-                    <label class="block text-[10px] font-bold text-gray-400 uppercase mb-1 tracking-widest">Amount</label>
-                    <input type="number" id="editPastAmount" class="w-full border p-3 rounded-xl bg-gray-50 text-sm focus:ring-2 focus:ring-orange-500 outline-none">
+                
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-[10px] font-bold text-gray-400 uppercase mb-1 tracking-widest">Primary Amt</label>
+                        <input type="number" id="editPastAmount" class="w-full border p-3 rounded-xl bg-gray-50 text-sm focus:ring-2 focus:ring-orange-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-gray-400 uppercase mb-1 tracking-widest">Primary Mode</label>
+                        <select id="editPastPayment" class="w-full border p-3 rounded-xl bg-gray-50 text-sm appearance-none focus:ring-2 focus:ring-orange-500 outline-none">
+                            <option value="Cash">Cash</option>
+                            <option value="Online">Online</option>
+                            <option value="Prepaid">Prepaid</option>
+                        </select>
+                    </div>
                 </div>
-                <div>
-                    <label class="block text-[10px] font-bold text-gray-400 uppercase mb-1 tracking-widest">Payment Mode</label>
-                    <select id="editPastPayment" class="w-full border p-3 rounded-xl bg-gray-50 text-sm appearance-none focus:ring-2 focus:ring-orange-500 outline-none">
-                        <option value="Cash">Cash</option>
-                        <option value="Online">Online</option>
-                        <option value="Prepaid">Prepaid</option>
-                    </select>
+
+                <div class="grid grid-cols-2 gap-3 p-3 bg-orange-50/50 rounded-xl border border-orange-100">
+                    <div>
+                        <label class="block text-[10px] font-bold text-orange-600 uppercase mb-1 tracking-widest">Split Amt (Opt)</label>
+                        <input type="number" id="editPastAmount2" placeholder="0" class="w-full border p-3 rounded-xl bg-white text-sm focus:ring-2 focus:ring-orange-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-orange-600 uppercase mb-1 tracking-widest">Split Mode (Opt)</label>
+                        <select id="editPastPayment2" class="w-full border p-3 rounded-xl bg-white text-sm appearance-none focus:ring-2 focus:ring-orange-500 outline-none">
+                            <option value="">None</option>
+                            <option value="Cash">Cash</option>
+                            <option value="Online">Online</option>
+                            <option value="Prepaid">Prepaid</option>
+                        </select>
+                    </div>
                 </div>
+
                 <div>
                     <label class="block text-[10px] font-bold text-gray-400 uppercase mb-1 tracking-widest">Date</label>
                     <input type="date" id="editPastDate" class="w-full border p-3 rounded-xl bg-gray-50 text-sm focus:ring-2 focus:ring-orange-500 outline-none">
@@ -623,6 +648,7 @@
         window.isSystemUnlocked = false; // PIN Lock state
         window.pendingSection = null; // Stored section to jump to after unlock
         window.selectedAssignStatus = 'All'; // For Assign section toggle
+        window.selectedCustomerFilter = 'All'; // For Add Customer section toggle
 
         // --- Hoisted Logic Functions ---
         
@@ -708,21 +734,55 @@
             }
         });
 
+        window.setCustomerFilter = (filter) => {
+            window.selectedCustomerFilter = filter;
+            window.renderCustomerFilterToggles();
+            window.renderCustomerTable();
+        };
+
+        window.renderCustomerFilterToggles = () => {
+            const container = document.getElementById('customerFilterToggle');
+            if (!container) return;
+            const filters = ['All', 'Today'];
+            container.innerHTML = filters.map(f => {
+                const isActive = window.selectedCustomerFilter === f;
+                return `<button onclick="window.setCustomerFilter('${f}')" class="px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest border transition ${isActive ? 'bg-blue-600 text-white border-blue-700 shadow-lg scale-105' : 'bg-white text-gray-500 border-gray-200 hover:bg-gray-50'}">${f}</button>`;
+            }).join('');
+        };
+
         function renderCustomerTable() {
             const tbody = document.getElementById('customerTableBody');
             const searchInput = document.getElementById('customerSearchInput');
             if (!tbody) return;
 
             const query = searchInput ? searchInput.value.toLowerCase().trim() : '';
+            const todayStr = new Date().toISOString().split('T')[0];
             
-            const filteredCustomers = window.customers.filter(c => {
-                if (!query) return true;
-                return (
-                    c.name.toLowerCase().includes(query) ||
-                    c.id.toLowerCase().includes(query) ||
-                    c.phone.includes(query) ||
-                    (c.altPhone && c.altPhone.includes(query))
-                );
+            let filteredCustomers = window.customers.filter(c => {
+                let matchSearch = true;
+                if (query) {
+                    matchSearch = (
+                        c.name.toLowerCase().includes(query) ||
+                        c.id.toLowerCase().includes(query) ||
+                        c.phone.includes(query) ||
+                        (c.altPhone && c.altPhone.includes(query))
+                    );
+                }
+                
+                let matchDate = true;
+                if (window.selectedCustomerFilter === 'Today') {
+                    const cDate = c.updatedAt ? c.updatedAt.split('T')[0] : '';
+                    matchDate = (cDate === todayStr);
+                }
+                
+                return matchSearch && matchDate;
+            });
+
+            // Sort customers: Latest first based on updatedAt timestamp
+            filteredCustomers.sort((a, b) => {
+                const timeA = a.updatedAt ? new Date(a.updatedAt).getTime() : 0;
+                const timeB = b.updatedAt ? new Date(b.updatedAt).getTime() : 0;
+                return timeB - timeA;
             });
 
             tbody.innerHTML = filteredCustomers.map((c, i) => {
@@ -863,6 +923,15 @@
             document.getElementById('todayPending').textContent = todayAll.filter(d => d.status === 'pending').length;
             document.getElementById('todayInTransit').textContent = todayAll.filter(d => d.status === 'in-transit').length;
             document.getElementById('todayCompleted').textContent = todayAll.filter(d => d.status === 'delivered').length;
+
+            // Calculate Cash Collected Today by the selected driver
+            let cashToday = 0;
+            todayAll.filter(d => d.status === 'delivered').forEach(d => {
+                if (d.payment === 'Cash' || d.payment === 'COD' || d.payment === 'cash') cashToday += parseFloat(d.amount || 0);
+                if (d.payment2 === 'Cash' || d.payment2 === 'COD' || d.payment2 === 'cash') cashToday += parseFloat(d.amount2 || 0);
+            });
+            const cashEl = document.getElementById('todayCashCollected');
+            if (cashEl) cashEl.textContent = '₹' + cashToday.toLocaleString();
         }
 
         function updateHistoryFilters() {
@@ -910,11 +979,13 @@
             // Summary Calculation
             let sumCash = 0, sumOnline = 0, sumPrepaid = 0;
             past.forEach(d => {
-                const amt = parseFloat(d.amount) || 0;
-                const p = (d.payment || '').toLowerCase();
-                if (p === 'cash' || p === 'cod') sumCash += amt;
-                else if (p === 'online') sumOnline += amt;
-                else if (p === 'prepaid') sumPrepaid += amt;
+                const addAmt = (amt, p) => {
+                    if (p === 'cash' || p === 'cod') sumCash += amt;
+                    else if (p === 'online') sumOnline += amt;
+                    else if (p === 'prepaid') sumPrepaid += amt;
+                };
+                addAmt(parseFloat(d.amount) || 0, (d.payment || '').toLowerCase());
+                addAmt(parseFloat(d.amount2) || 0, (d.payment2 || '').toLowerCase());
             });
             document.getElementById('summaryCash').textContent = '₹' + sumCash.toLocaleString();
             document.getElementById('summaryOnline').textContent = '₹' + sumOnline.toLocaleString();
@@ -931,11 +1002,17 @@
                 const realIdx = window.deliveries.indexOf(d);
                 const pTime = d.pickupTime ? new Date(d.pickupTime).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit', hour12: true}) : '-';
                 const dTime = d.deliveryTime ? new Date(d.deliveryTime).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit', hour12: true}) : '-';
+                
+                let amountHtml = `₹${d.amount} <span class="block text-[10px] text-gray-400 font-normal uppercase tracking-widest">${d.payment}</span>`;
+                if (d.amount2 && d.payment2) {
+                    amountHtml += `<div class="mt-1 pt-1 border-t border-gray-100">₹${d.amount2} <span class="block text-[10px] text-gray-400 font-normal uppercase tracking-widest">${d.payment2}</span></div>`;
+                }
+
                 return `
                 <tr class="hover:bg-gray-50 transition">
                     <td class="px-5 py-4 font-mono text-[10px] font-bold text-blue-500 cursor-pointer hover:underline" onclick="window.openDeliveryDetail(${realIdx}, 'history')">${d.customerId || d.id}</td>
                     <td class="px-5 py-4 font-bold text-gray-800">${d.customerName}</td>
-                    <td class="px-5 py-4 font-bold text-gray-800">₹${d.amount} <span class="block text-[10px] text-gray-400 font-normal uppercase tracking-widest">${d.payment}</span></td>
+                    <td class="px-5 py-4 font-bold text-gray-800">${amountHtml}</td>
                     <td class="px-5 py-4 text-gray-400 font-medium">${d.driverName}</td>
                     <td class="px-5 py-4 text-xs text-gray-400 font-bold uppercase tracking-tighter">${window.formatDateDDMMYYYY(d.date)}</td>
                     <td class="px-5 py-4 text-xs font-bold text-orange-400">${pTime}</td>
@@ -991,7 +1068,7 @@
             if (toDate) periodDeliveries = periodDeliveries.filter(d => d.date <= toDate);
 
             const del = periodDeliveries.filter(d => d.status === 'delivered');
-            const rev = del.reduce((s, d) => s + parseFloat(d.amount || 0), 0);
+            const rev = del.reduce((s, d) => s + (parseFloat(d.amount || 0) + parseFloat(d.amount2 || 0)), 0);
             
             const revEl = document.getElementById('analysisRevenue');
             if (revEl) revEl.textContent = '₹' + rev.toLocaleString();
@@ -1034,7 +1111,7 @@
                     custStats[key] = { id: d.customerId, name: d.customerName, phone: d.customerPhone, orders: 0, spent: 0 };
                 }
                 custStats[key].orders += 1;
-                custStats[key].spent += parseFloat(d.amount || 0);
+                custStats[key].spent += (parseFloat(d.amount || 0) + parseFloat(d.amount2 || 0));
             });
 
             // Sort by orders, then by spending
@@ -1074,6 +1151,8 @@
         window.renderDriverToggles = renderDriverToggles;
         window.renderAssignStatusToggles = window.renderAssignStatusToggles;
         window.setAssignStatusFilter = window.setAssignStatusFilter;
+        window.renderCustomerFilterToggles = window.renderCustomerFilterToggles;
+        window.setCustomerFilter = window.setCustomerFilter;
         window.renderPerformance = renderPerformance;
         window.renderAnalysis = renderAnalysis;
         window.updatePerfDriverSelect = updatePerfDriverSelect;
@@ -1084,18 +1163,24 @@
 
             document.getElementById('editPastOrderId').value = firebaseId;
             document.getElementById('editPastDriver').innerHTML = window.drivers.map((drv) => `<option value="${drv.name}" ${drv.name === d.driverName ? 'selected' : ''}>${drv.name}</option>`).join('');
-            document.getElementById('editPastAmount').value = d.amount || '';
             
+            document.getElementById('editPastAmount').value = d.amount || '';
             // Safely handle payment value to avoid crashes on old orders
             const payStr = d.payment || 'Cash';
             let payVal = payStr.toLowerCase() === 'cod' ? 'Cash' : payStr.charAt(0).toUpperCase() + payStr.slice(1).toLowerCase();
-            
             // Fallback to Cash if string does not match select options
             if (!['Cash', 'Online', 'Prepaid'].includes(payVal)) {
                 payVal = 'Cash';
             }
-            
             document.getElementById('editPastPayment').value = payVal;
+            
+            // Secondary (Split) Payment
+            document.getElementById('editPastAmount2').value = d.amount2 || '';
+            const payStr2 = d.payment2 || '';
+            let payVal2 = payStr2 ? (payStr2.toLowerCase() === 'cod' ? 'Cash' : payStr2.charAt(0).toUpperCase() + payStr2.slice(1).toLowerCase()) : '';
+            if (!['Cash', 'Online', 'Prepaid', ''].includes(payVal2)) payVal2 = '';
+            document.getElementById('editPastPayment2').value = payVal2;
+
             document.getElementById('editPastDate').value = d.date || '';
             
             document.getElementById('editPastOrderModal').classList.remove('hidden');
@@ -1110,15 +1195,27 @@
             const driverName = document.getElementById('editPastDriver').value;
             const amount = document.getElementById('editPastAmount').value;
             const payment = document.getElementById('editPastPayment').value;
+            const amount2 = document.getElementById('editPastAmount2').value;
+            const payment2 = document.getElementById('editPastPayment2').value;
             const date = document.getElementById('editPastDate').value;
             
             try {
-                await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'deliveries', editId), {
+                const payload = {
                     driverName: driverName,
                     amount: amount,
                     payment: payment,
                     date: date
-                });
+                };
+
+                if (amount2 && payment2) {
+                    payload.amount2 = amount2;
+                    payload.payment2 = payment2;
+                } else {
+                    payload.amount2 = null;
+                    payload.payment2 = null;
+                }
+
+                await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'deliveries', editId), payload);
                 window.closeEditPastOrderModal(); 
                 window.showToast("Order Updated", "success");
             } catch (err) { window.showToast("Sync Error", "error"); }
@@ -1333,8 +1430,17 @@
             document.getElementById('detailCustPhone').textContent = combinedPhone;
             
             document.getElementById('detailCustAddress').textContent = d.customerAddress;
-            document.getElementById('detailPaymentMode').textContent = d.payment;
-            document.getElementById('detailAmount').textContent = '₹' + d.amount;
+            
+            // Format Display for potentially split payments
+            let detailPayText = d.payment;
+            let detailAmtText = '₹' + d.amount;
+            if (d.amount2 && d.payment2) {
+                detailPayText += ` & ${d.payment2}`;
+                detailAmtText += ` + ₹${d.amount2}`;
+            }
+
+            document.getElementById('detailPaymentMode').textContent = detailPayText;
+            document.getElementById('detailAmount').textContent = detailAmtText;
             
             // Set Status Badge
             const statusEl = document.getElementById('detailStatus');
@@ -1624,6 +1730,7 @@ Thank you for choosing Guru Sampoorna. We truly appreciate your trust in us `;
                 if (u) {
                     onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'customers'), (snap) => {
                         window.customers = snap.docs.map(d => ({...d.data(), firebaseId: d.id}));
+                        if(window.renderCustomerFilterToggles) window.renderCustomerFilterToggles();
                         renderCustomerTable();
                         if(window.updateHistoryFilters) window.updateHistoryFilters();
                     });
