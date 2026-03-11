@@ -513,14 +513,17 @@
             </div>
             <form id="customerForm" class="p-6 md:p-8 space-y-4 max-h-[80vh] overflow-y-auto" onsubmit="window.saveCustomer(event)">
                 <input type="hidden" id="editIndex" value="-1">
-                <input type="text" id="custId" oninput="window.checkDuplicateCustId()" required placeholder="Customer ID (e.g. C001)" class="w-full border p-3 md:p-4 rounded-2xl bg-gray-50 text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-colors">
+                <input type="text" id="custId" oninput="window.checkDuplicates()" required placeholder="Customer ID (e.g. C001)" class="w-full border p-3 md:p-4 rounded-2xl bg-gray-50 text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-colors">
                 <input type="text" id="custName" required placeholder="Full Name" class="w-full border p-3 md:p-4 rounded-2xl bg-gray-50 text-sm focus:ring-2 focus:ring-blue-500 outline-none disabled:opacity-50 disabled:cursor-not-allowed">
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <input type="tel" id="custPhone" required placeholder="Phone" class="w-full border p-3 md:p-4 rounded-2xl bg-gray-50 text-sm focus:ring-2 focus:ring-blue-500 outline-none disabled:opacity-50 disabled:cursor-not-allowed">
+                    <input type="tel" id="custPhone" oninput="window.checkDuplicates()" required placeholder="Phone" class="w-full border p-3 md:p-4 rounded-2xl bg-gray-50 text-sm focus:ring-2 focus:ring-blue-500 outline-none disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
                     <input type="tel" id="custAltPhone" placeholder="Alt Phone" class="w-full border p-3 md:p-4 rounded-2xl bg-gray-50 text-sm focus:ring-2 focus:ring-blue-500 outline-none disabled:opacity-50 disabled:cursor-not-allowed">
                 </div>
                 <textarea id="custAddress" required placeholder="Complete Delivery Address" class="w-full border p-3 md:p-4 rounded-2xl bg-gray-50 text-sm h-24 focus:ring-2 focus:ring-blue-500 outline-none disabled:opacity-50 disabled:cursor-not-allowed"></textarea>
-                <input type="url" id="custMapLink" placeholder="Google Maps Link" class="w-full border p-3 md:p-4 rounded-2xl bg-gray-50 text-sm focus:ring-2 focus:ring-blue-500 outline-none disabled:opacity-50 disabled:cursor-not-allowed">
+                <div>
+                    <input type="url" id="custMapLink" oninput="window.checkDuplicates()" placeholder="Google Maps Link" class="w-full border p-3 md:p-4 rounded-2xl bg-gray-50 text-sm focus:ring-2 focus:ring-blue-500 outline-none disabled:opacity-50 disabled:cursor-not-allowed">
+                    <p id="mapLinkWarning" class="text-[10px] font-bold text-amber-500 mt-2 ml-1 hidden"><i class="fas fa-exclamation-triangle mr-1"></i>This map link is already used by another customer.</p>
+                </div>
                 <button type="submit" id="modalSaveBtn" class="w-full bg-blue-600 text-white font-black py-3 md:py-4 rounded-2xl shadow-lg hover:bg-blue-700 transition active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed">Save Customer</button>
             </form>
         </div>
@@ -1231,31 +1234,66 @@
             document.getElementById('sidebarOverlay').classList.add('hidden-overlay');
         };
 
-        window.checkDuplicateCustId = () => {
-            const inputId = document.getElementById('custId').value.trim();
+        window.checkDuplicates = () => {
+            const inputId = document.getElementById('custId').value.trim().toLowerCase();
+            const inputPhone = document.getElementById('custPhone').value.trim();
+            const inputMapLink = document.getElementById('custMapLink').value.trim();
             const editIdx = parseInt(document.getElementById('editIndex').value);
             
-            const isDuplicate = window.customers.some((c, idx) => c.id.toLowerCase() === inputId.toLowerCase() && idx !== editIdx);
+            const isIdDuplicate = inputId !== "" && window.customers.some((c, idx) => c.id.toLowerCase() === inputId && idx !== editIdx);
+            const isPhoneDuplicate = inputPhone !== "" && window.customers.some((c, idx) => c.phone === inputPhone && idx !== editIdx);
+            const isMapDuplicate = inputMapLink !== "" && window.customers.some((c, idx) => c.mapLink && c.mapLink === inputMapLink && idx !== editIdx);
             
             const nameInput = document.getElementById('custName');
-            const phoneInput = document.getElementById('custPhone');
             const altPhoneInput = document.getElementById('custAltPhone');
             const addressInput = document.getElementById('custAddress');
             const mapLinkInput = document.getElementById('custMapLink');
             const saveBtn = document.getElementById('modalSaveBtn');
             const custIdEl = document.getElementById('custId');
+            const phoneInput = document.getElementById('custPhone');
+            const warningEl = document.getElementById('mapLinkWarning');
 
-            if (isDuplicate && inputId !== "") {
-                window.showToast("Customer ID already exists!", "error");
-                nameInput.disabled = true; phoneInput.disabled = true; altPhoneInput.disabled = true;
-                addressInput.disabled = true; mapLinkInput.disabled = true; saveBtn.disabled = true;
+            // Handle Map Link Warning (Non-blocking)
+            if (isMapDuplicate) warningEl.classList.remove('hidden');
+            else warningEl.classList.add('hidden');
+
+            let blocked = false;
+
+            // Check ID
+            if (isIdDuplicate) {
                 custIdEl.classList.add('border-red-500', 'focus:ring-red-500');
                 custIdEl.classList.remove('focus:ring-blue-500');
+                window.showToast("Customer ID already exists!", "error");
+                blocked = true;
             } else {
-                nameInput.disabled = false; phoneInput.disabled = false; altPhoneInput.disabled = false;
-                addressInput.disabled = false; mapLinkInput.disabled = false; saveBtn.disabled = false;
                 custIdEl.classList.remove('border-red-500', 'focus:ring-red-500');
                 custIdEl.classList.add('focus:ring-blue-500');
+            }
+
+            // Check Phone
+            if (isPhoneDuplicate) {
+                phoneInput.classList.add('border-red-500', 'focus:ring-red-500');
+                phoneInput.classList.remove('focus:ring-blue-500');
+                if(!isIdDuplicate) window.showToast("Phone number already exists!", "error");
+                blocked = true;
+            } else {
+                phoneInput.classList.remove('border-red-500', 'focus:ring-red-500');
+                phoneInput.classList.add('focus:ring-blue-500');
+            }
+
+            // Block or Unblock corresponding fields
+            if (blocked) {
+                nameInput.disabled = true; 
+                altPhoneInput.disabled = true;
+                addressInput.disabled = true; 
+                mapLinkInput.disabled = true; 
+                saveBtn.disabled = true;
+            } else {
+                nameInput.disabled = false; 
+                altPhoneInput.disabled = false;
+                addressInput.disabled = false; 
+                mapLinkInput.disabled = false; 
+                saveBtn.disabled = false;
             }
         };
 
@@ -1308,8 +1346,12 @@
             document.getElementById('custAddress').disabled = false;
             document.getElementById('custMapLink').disabled = false;
             document.getElementById('modalSaveBtn').disabled = false;
+            
             document.getElementById('custId').classList.remove('border-red-500', 'focus:ring-red-500');
             document.getElementById('custId').classList.add('focus:ring-blue-500');
+            document.getElementById('custPhone').classList.remove('border-red-500', 'focus:ring-red-500');
+            document.getElementById('custPhone').classList.add('focus:ring-blue-500');
+            document.getElementById('mapLinkWarning').classList.add('hidden');
 
             if(idx !== undefined && window.customers[idx]) {
                 const c = window.customers[idx];
@@ -1486,19 +1528,52 @@
             e.preventDefault();
             const editIdx = parseInt(document.getElementById('editIndex').value);
             const inputId = document.getElementById('custId').value.trim();
+            const inputPhone = document.getElementById('custPhone').value.trim();
 
             // Final fallback duplicate check right before save
-            const isDuplicate = window.customers.some((c, idx) => c.id.toLowerCase() === inputId.toLowerCase() && idx !== editIdx);
-            if (isDuplicate) {
-                window.showToast("Customer ID already exists!", "error");
-                return;
-            }
+            const isIdDuplicate = window.customers.some((c, idx) => c.id.toLowerCase() === inputId.toLowerCase() && idx !== editIdx);
+            const isPhoneDuplicate = window.customers.some((c, idx) => c.phone === inputPhone && idx !== editIdx);
+            
+            if (isIdDuplicate) { window.showToast("Customer ID already exists!", "error"); return; }
+            if (isPhoneDuplicate) { window.showToast("Phone number already exists!", "error"); return; }
 
-            const data = { id: inputId, name: document.getElementById('custName').value.trim(), phone: document.getElementById('custPhone').value.trim(), altPhone: document.getElementById('custAltPhone').value.trim(), address: document.getElementById('custAddress').value.trim(), mapLink: document.getElementById('custMapLink').value.trim(), updatedAt: new Date().toISOString() };
+            const data = { 
+                id: inputId, 
+                name: document.getElementById('custName').value.trim(), 
+                phone: inputPhone, 
+                altPhone: document.getElementById('custAltPhone').value.trim(), 
+                address: document.getElementById('custAddress').value.trim(), 
+                mapLink: document.getElementById('custMapLink').value.trim(), 
+                updatedAt: new Date().toISOString() 
+            };
+            
             try {
-                if (editIdx >= 0) await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'customers', window.customers[editIdx].firebaseId), data);
-                else await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'customers'), data);
-                window.closeCustomerModal(); window.showToast("Customer Saved", "success");
+                if (editIdx >= 0) {
+                    const existingCustomer = window.customers[editIdx];
+                    await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'customers', existingCustomer.firebaseId), data);
+                    
+                    // Cascade updates to all existing deliveries for this customer
+                    const matchingDeliveries = window.deliveries.filter(d => d.customerId === existingCustomer.id);
+                    if (matchingDeliveries.length > 0) {
+                        const b = writeBatch(db);
+                        matchingDeliveries.forEach(d => {
+                            const dRef = doc(db, 'artifacts', appId, 'public', 'data', 'deliveries', d.firebaseId);
+                            b.update(dRef, {
+                                customerId: data.id,
+                                customerName: data.name,
+                                customerPhone: data.phone,
+                                customerAltPhone: data.altPhone,
+                                customerAddress: data.address,
+                                customerMapLink: data.mapLink
+                            });
+                        });
+                        await b.commit();
+                    }
+                } else {
+                    await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'customers'), data);
+                }
+                window.closeCustomerModal(); 
+                window.showToast("Customer Saved", "success");
             } catch (err) { window.showToast("Sync Error", "error"); }
         };
 
@@ -1653,7 +1728,7 @@ Your order is sucessfully assigned to our delivery executive.
 You can track your delivery status using the link below:
  ${trackingUrl}
 
-Your order will be delivered shortly as per the route convenience.
+Your order will be delivered TODAY (Between 10 AM to 7 PM) as per the route convenience.
 
 Thank you for choosing Guru Sampoorna. We truly appreciate your trust in us `;
             
