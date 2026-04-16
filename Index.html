@@ -48,7 +48,7 @@
         import { createRoot } from 'react-dom/client';
         import { initializeApp } from "firebase/app";
         import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "firebase/auth";
-        import { getFirestore, doc, setDoc, collection, onSnapshot, deleteDoc } from "firebase/firestore";
+        import { getFirestore, doc, setDoc, getDoc, collection, onSnapshot, deleteDoc } from "firebase/firestore";
         import { 
           BarChart3, UploadCloud, Settings, FileSpreadsheet, TrendingUp,
           PieChart as PieChartIcon, DollarSign, Package, Activity,
@@ -201,7 +201,6 @@
           return parts.join(' + ');
         };
 
-        // Missing NoDataPrompt Component addition
         function NoDataPrompt({ goToUpload }) {
           return (
             <div className="h-full flex flex-col items-center justify-center text-center animate-in py-20 px-4">
@@ -219,7 +218,11 @@
         function App() {
           const [activeTab, setActiveTab] = useState('upload');
           const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+          
+          // Files metadata and actual parsed data caches
           const [files, setFiles] = useState([]);
+          const [fileDataCache, setFileDataCache] = useState({});
+          
           const [activeFileId, setActiveFileId] = useState(null);
           const [pendingFile, setPendingFile] = useState(null);
           const [error, setError] = useState('');
@@ -230,6 +233,11 @@
           const [isCheckingAuth, setIsCheckingAuth] = useState(true);
           const [authError, setAuthError] = useState('');
           const [isCloudSyncing, setIsCloudSyncing] = useState(true);
+          
+          // Show downloading state when fetching large chunks
+          const isDownloadingChunks = useMemo(() => {
+              return files.some(f => f.chunksCount > 0 && !fileDataCache[f.id]);
+          }, [files, fileDataCache]);
 
           // Business States
           const [businessCustomers, setBusinessCustomers] = useState([]);
@@ -279,7 +287,7 @@
           useEffect(() => {
             if (!user) return;
 
-            // Listen to Shared Settings (Global across devices)
+            // Listen to Shared Settings
             const settingsRef = doc(db, 'artifacts', APP_ID, 'public', 'data', 'settings', 'sharedSettings');
             const unsubSettings = onSnapshot(settingsRef, (docSnap) => {
               if (docSnap.exists()) {
@@ -290,20 +298,13 @@
               }
             }, (err) => console.error("Settings listener error:", err));
 
-            // Listen to Shared Files
+            // Listen to Shared Files (Metadata only)
             const filesRef = collection(db, 'artifacts', APP_ID, 'public', 'data', 'files');
             const unsubFiles = onSnapshot(filesRef, (snap) => {
               const loadedFiles = [];
               snap.forEach(d => {
-                 const data = d.data();
-                 // Parse the stringified JSON array
-                 let fileData = data.data;
-                 if (typeof fileData === 'string') {
-                     try { fileData = JSON.parse(fileData); } catch (e) { fileData = []; }
-                 }
-                 loadedFiles.push({ ...data, data: fileData });
+                 loadedFiles.push(d.data());
               });
-              // Sort newest first
               setFiles(loadedFiles.sort((a,b) => parseInt(b.id) - parseInt(a.id)));
               setIsCloudSyncing(false);
             }, (err) => {
@@ -316,6 +317,39 @@
               unsubFiles();
             };
           }, [user]);
+
+          // Fetch chunks for files that are not locally cached yet
+          useEffect(() => {
+              if (!user) return;
+              files.forEach(async (fileMeta) => {
+                 if (!fileDataCache[fileMeta.id]) {
+                     // Handle backward compatibility (files saved directly before chunking)
+                     if (fileMeta.data) {
+                         try {
+                            const parsed = typeof fileMeta.data === 'string' ? JSON.parse(fileMeta.data) : fileMeta.data;
+                            setFileDataCache(prev => ({ ...prev, [fileMeta.id]: parsed }));
+                         } catch(e) {}
+                     } 
+                     // Handle new chunked files
+                     else if (fileMeta.chunksCount > 0) {
+                         try {
+                             let fullString = "";
+                             for (let i = 0; i < fileMeta.chunksCount; i++) {
+                                 const chunkRef = doc(db, 'artifacts', APP_ID, 'public', 'data', 'files', fileMeta.id, 'chunks', String(i));
+                                 const chunkDoc = await getDoc(chunkRef);
+                                 if (chunkDoc.exists()) fullString += chunkDoc.data().text;
+                             }
+                             if (fullString) {
+                                 const parsedData = JSON.parse(fullString);
+                                 setFileDataCache(prev => ({ ...prev, [fileMeta.id]: parsedData }));
+                             }
+                         } catch (err) {
+                             console.error(`Failed to load chunks for ${fileMeta.id}`, err);
+                         }
+                     }
+                 }
+              });
+          }, [files, user]);
 
           // Wrapper to sync settings changes to Firestore
           const updateCloudSettings = async (updates) => {
@@ -340,9 +374,7 @@
           };
 
           // --- DATA PROCESSING ---
-          const activeFile = files.find(f => f.id === activeFileId);
-          const csvData = activeFile ? activeFile.data : [];
-          const allFilesData = useMemo(() => files.flatMap(f => f.data), [files]);
+          const allFilesData = useMemo(() => files.flatMap(f => fileDataCache[f.id] || []), [files, fileDataCache]);
 
           const { standardData, b2bData } = useMemo(() => {
             const standard = [];
@@ -436,31 +468,41 @@
             }
 
             const fileId = Date.now().toString();
-            const newFile = {
+            
+            // Chunk the payload to avoid the 1MB Firestore limit
+            const dataString = JSON.stringify(pendingFile.data);
+            const CHUNK_SIZE = 800000; // Safe threshold under 1MB
+            const chunks = [];
+            for (let i = 0; i < dataString.length; i += CHUNK_SIZE) {
+                chunks.push(dataString.slice(i, i + CHUNK_SIZE));
+            }
+
+            const newFileMeta = {
               id: fileId,
               name: `${month} ${year}`,
               originalName: pendingFile.originalName,
               headers: pendingFile.headers,
-              data: pendingFile.data,
-              date: new Date().toLocaleDateString()
+              date: new Date().toLocaleDateString(),
+              rowCount: pendingFile.data.length,
+              chunksCount: chunks.length
             };
             
-            // Optimistic UI Update
-            setFiles(prev => [newFile, ...prev]);
+            // Optimistic Local Update
+            setFiles(prev => [newFileMeta, ...prev]);
+            setFileDataCache(prev => ({ ...prev, [fileId]: pendingFile.data }));
             setActiveFileId(fileId);
             setPendingFile(null);
 
-            // Save to Firestore (Stringify data to prevent complex nested array limits)
             try {
+              // 1. Save chunks to subcollection
+              for (let i = 0; i < chunks.length; i++) {
+                  const chunkRef = doc(db, 'artifacts', APP_ID, 'public', 'data', 'files', fileId, 'chunks', String(i));
+                  await setDoc(chunkRef, { text: chunks[i] });
+              }
+
+              // 2. Save metadata document
               const fileDocRef = doc(db, 'artifacts', APP_ID, 'public', 'data', 'files', fileId);
-              await setDoc(fileDocRef, {
-                  id: fileId,
-                  name: newFile.name,
-                  originalName: newFile.originalName,
-                  headers: newFile.headers,
-                  date: newFile.date,
-                  data: JSON.stringify(newFile.data) 
-              });
+              await setDoc(fileDocRef, newFileMeta);
             } catch (err) {
               console.error(err);
               setError("Failed to sync file to cloud: " + err.message);
@@ -468,12 +510,29 @@
           };
 
           const deleteFile = async (id) => {
+            // Delete locally
             setFiles(prev => prev.filter(f => f.id !== id));
+            setFileDataCache(prev => {
+                const newCache = { ...prev };
+                delete newCache[id];
+                return newCache;
+            });
             if (activeFileId === id) setActiveFileId(null);
             
+            // Delete globally
             if (user) {
-               const fileDocRef = doc(db, 'artifacts', APP_ID, 'public', 'data', 'files', id);
-               await deleteDoc(fileDocRef).catch(console.error);
+               try {
+                   const fileMeta = files.find(f => f.id === id);
+                   if (fileMeta && fileMeta.chunksCount) {
+                       for (let i = 0; i < fileMeta.chunksCount; i++) {
+                           await deleteDoc(doc(db, 'artifacts', APP_ID, 'public', 'data', 'files', id, 'chunks', String(i)));
+                       }
+                   }
+                   const fileDocRef = doc(db, 'artifacts', APP_ID, 'public', 'data', 'files', id);
+                   await deleteDoc(fileDocRef);
+               } catch (e) {
+                   console.error("Error deleting file:", e);
+               }
             }
           };
 
@@ -578,7 +637,7 @@
                     onClick={() => handleTabChange('overall')}
                     className={`w-full flex items-center px-4 py-3 rounded-xl transition-all duration-200 ${
                       activeTab === 'overall' ? 'bg-blue-900 text-white font-medium shadow-sm' : 'hover:bg-blue-900/50 text-blue-100'
-                    }`}
+                }`}
                   >
                     <LineChart className={`w-5 h-5 mr-3 ${activeTab === 'overall' ? 'text-white' : 'text-emerald-400'}`} />
                     Overall Revenue
@@ -624,7 +683,6 @@
                     Settings
                   </button>
 
-                  {/* Spacer to push logout to bottom */}
                   <div className="flex-1"></div>
 
                   <div className="border-t border-blue-900/50 pt-4 mt-6">
@@ -641,7 +699,6 @@
 
               {/* MAIN CONTENT */}
               <main className="flex-1 flex flex-col h-screen overflow-hidden w-full">
-                {/* Unified Header */}
                 <header className="h-16 bg-white/80 backdrop-blur-md flex items-center justify-between px-4 md:px-8 border-b border-slate-200 shadow-sm z-10 flex-shrink-0">
                   <div className="flex items-center">
                     <button 
@@ -667,7 +724,14 @@
                   </div>
 
                   <div className="flex items-center gap-3">
-                    {user && !isCloudSyncing && (
+                    {isDownloadingChunks && (
+                        <div className="hidden sm:flex items-center text-xs font-bold text-amber-600 bg-amber-50 border border-amber-100 px-2.5 py-1.5 rounded-full">
+                           <Activity className="w-3 h-3 mr-1.5 animate-spin" />
+                           Downloading Data...
+                        </div>
+                    )}
+
+                    {user && !isCloudSyncing && !isDownloadingChunks && (
                        <div className="hidden sm:flex items-center text-xs font-bold text-emerald-600 bg-emerald-50 border border-emerald-100 px-2.5 py-1.5 rounded-full">
                           <Cloud className="w-3.5 h-3.5 mr-1" />
                           Live Sync
@@ -683,7 +747,6 @@
                   </div>
                 </header>
 
-                {/* Scrollable Content Area */}
                 <div className="flex-1 overflow-auto p-4 md:p-8">
                   <div className="max-w-6xl mx-auto h-full">
                     {activeTab === 'upload' && (
@@ -961,7 +1024,7 @@
                               <div className="flex items-center text-xs text-slate-500 mt-1 space-x-3">
                                 <span>{file.date}</span>
                                 <span className="w-1 h-1 rounded-full bg-slate-300"></span>
-                                <span>{file.data.length.toLocaleString()} rows</span>
+                                <span>{(file.rowCount || 0).toLocaleString()} rows</span>
                               </div>
                             </div>
                           </div>
@@ -1542,7 +1605,6 @@
           );
         }
 
-        // --- 2. CUSTOMER ANALYSIS SECTION ---
         function CustomerSection({ data, currencyPrefix, goToUpload, includeB2B, setIncludeB2B, includeB2BProducts, setIncludeB2BProducts }) {
           const [filterType, setFilterType] = useState('current'); 
           const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth().toString());
@@ -1615,8 +1677,8 @@
           }, [data]);
 
           const allKnownCustomers = useMemo(() => {
-              if (!globalStats) return [];
-              return Object.entries(globalStats.names).map(([id, name]) => ({id, name})).sort((a,b) => a.name.localeCompare(b.name));
+             if (!globalStats) return [];
+             return Object.entries(globalStats.names).map(([id, name]) => ({id, name})).sort((a,b) => a.name.localeCompare(b.name));
           }, [globalStats]);
 
           const baseData = useMemo(() => {
@@ -1901,7 +1963,7 @@
                       )}
 
                       {filterType === 'range' && (
-                        <div className="flex flex-col sm:flex-row sm:items-center gap-3 w-full max-w-md animate-in fade-in">
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-3 w-full animate-in fade-in">
                           <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="w-full sm:flex-1 bg-slate-50 border border-slate-200 text-slate-700 rounded-xl px-3 py-2 text-sm font-medium focus:ring-2 focus:ring-indigo-500 outline-none" />
                           <span className="text-slate-400 text-sm hidden sm:block">to</span>
                           <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="w-full sm:flex-1 bg-slate-50 border border-slate-200 text-slate-700 rounded-xl px-3 py-2 text-sm font-medium focus:ring-2 focus:ring-indigo-500 outline-none" />
@@ -2268,7 +2330,6 @@
           );
         }
 
-        // --- 3. PRODUCT ANALYSIS SECTION ---
         function ProductSection({ data, currencyPrefix, goToUpload, includeB2B, setIncludeB2B, includeB2BProducts, setIncludeB2BProducts }) {
           const [filterType, setFilterType] = useState('current'); 
           const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth().toString());
@@ -2623,7 +2684,7 @@
                       )}
 
                       {filterType === 'range' && (
-                        <div className="flex flex-col sm:flex-row sm:items-center gap-3 w-full max-w-md animate-in fade-in">
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-3 w-full animate-in fade-in">
                           <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="w-full sm:flex-1 bg-slate-50 border border-slate-200 text-slate-700 rounded-xl px-3 py-2 text-sm font-medium focus:ring-2 focus:ring-indigo-500 outline-none" />
                           <span className="text-slate-400 text-sm hidden sm:block">to</span>
                           <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="w-full sm:flex-1 bg-slate-50 border border-slate-200 text-slate-700 rounded-xl px-3 py-2 text-sm font-medium focus:ring-2 focus:ring-indigo-500 outline-none" />
@@ -3125,6 +3186,7 @@
           return (
             <div className="space-y-4 sm:space-y-6 animate-in slide-in-from-bottom-4 duration-500 pb-10">
               
+              {/* Filter Controls */}
               <div className="bg-white p-4 sm:p-6 rounded-3xl shadow-sm border border-slate-200">
                 <h2 className="text-2xl sm:text-3xl md:text-4xl font-black text-blue-900 tracking-tight uppercase mb-4 sm:mb-6 border-b border-slate-100 pb-4">
                   B2B: {getHeadline()}
@@ -3164,6 +3226,7 @@
                 </div>
               </div>
 
+              {/* Overview Cards */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                 <div className="bg-white rounded-3xl p-4 sm:p-6 shadow-sm border border-slate-100 flex items-center relative overflow-hidden">
                   <div className="absolute -right-4 -top-4 w-24 h-24 bg-blue-50 rounded-full flex items-center justify-center opacity-50">
@@ -3185,6 +3248,7 @@
                 </div>
               </div>
 
+              {/* Trend Chart */}
               <div className="bg-white rounded-3xl shadow-sm border border-slate-200 p-4 sm:p-6">
                 <div className="mb-2">
                   <h3 className="text-base font-bold text-slate-800 flex items-center">
@@ -3195,6 +3259,7 @@
                 <SimpleBarChart data={analytics.last12Months} currencyPrefix={currencyPrefix} labelKey="label" valueKey="value" height={180} minBarWidth="min-w-[60px]" scrollToEnd={true} />
               </div>
 
+              {/* Top B2B Customers List */}
               <div className="bg-white rounded-3xl shadow-sm border border-slate-200 p-4 sm:p-6 md:p-8">
                 <div className="mb-6 border-b border-slate-100 pb-4">
                   <h3 className="text-lg font-bold text-slate-800 flex items-center">
