@@ -678,11 +678,6 @@
                        <div className="hidden md:flex items-center text-sm font-semibold text-slate-700 bg-white border border-slate-200 shadow-sm px-3 py-1.5 rounded-full">
                          <img src={user.photoURL || `https://ui-avatars.com/api/?name=${user.email}&background=e0e7ff&color=4f46e5`} alt="Profile" className="w-6 h-6 rounded-full mr-2 border border-slate-100" referrerPolicy="no-referrer" />
                          <span className="truncate max-w-[150px]">{user.email}</span>
-                         {isRestrictedUser && (
-                           <span className="ml-2 px-2 py-0.5 bg-rose-100 text-rose-700 text-[10px] font-bold rounded-md uppercase tracking-wider">
-                             Upload Only
-                           </span>
-                         )}
                        </div>
                     )}
                   </div>
@@ -769,7 +764,7 @@
 
         // --- SUB-COMPONENTS ---
 
-        function UploadSection({ handleFileUpload, error, files, activeFileId, deleteFile, selectFile, pendingFile, setPendingFile, savePendingFile, isCloudSyncing, isRestrictedUser }) {
+        function UploadSection({ handleFileUpload, error, files, activeFileId, deleteFile, selectFile, pendingFile, setPendingFile, savePendingFile, isCloudSyncing }) {
           const fileInputRef = useRef(null);
           const [selectedMonth, setSelectedMonth] = useState('January');
           const [selectedYear, setSelectedYear] = useState(new Date().getFullYear().toString());
