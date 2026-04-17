@@ -48,7 +48,7 @@
         import { createRoot } from 'react-dom/client';
         import { initializeApp } from "firebase/app";
         import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "firebase/auth";
-        import { getFirestore, doc, setDoc, getDoc, collection, onSnapshot, deleteDoc } from "firebase/firestore";
+        import { getFirestore, doc, setDoc, collection, onSnapshot, deleteDoc } from "firebase/firestore";
         import { 
           BarChart3, UploadCloud, Settings, FileSpreadsheet, TrendingUp,
           PieChart as PieChartIcon, DollarSign, Package, Activity,
@@ -201,6 +201,7 @@
           return parts.join(' + ');
         };
 
+        // Missing NoDataPrompt Component addition
         function NoDataPrompt({ goToUpload }) {
           return (
             <div className="h-full flex flex-col items-center justify-center text-center animate-in py-20 px-4">
@@ -218,11 +219,7 @@
         function App() {
           const [activeTab, setActiveTab] = useState('upload');
           const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-          
-          // Files metadata and actual parsed data caches
           const [files, setFiles] = useState([]);
-          const [fileDataCache, setFileDataCache] = useState({});
-          
           const [activeFileId, setActiveFileId] = useState(null);
           const [pendingFile, setPendingFile] = useState(null);
           const [error, setError] = useState('');
@@ -233,17 +230,16 @@
           const [isCheckingAuth, setIsCheckingAuth] = useState(true);
           const [authError, setAuthError] = useState('');
           const [isCloudSyncing, setIsCloudSyncing] = useState(true);
-          
-          // Show downloading state when fetching large chunks
-          const isDownloadingChunks = useMemo(() => {
-              return files.some(f => f.chunksCount > 0 && !fileDataCache[f.id]);
-          }, [files, fileDataCache]);
 
           // Business States
           const [businessCustomers, setBusinessCustomers] = useState([]);
           const [includeB2B, setIncludeB2B] = useState(false);
           const [businessProducts, setBusinessProducts] = useState([]);
           const [includeB2BProducts, setIncludeB2BProducts] = useState(false);
+
+          // Hidden Customer States
+          const [hiddenCustomers, setHiddenCustomers] = useState([]);
+          const [showHiddenCustomers, setShowHiddenCustomers] = useState(false);
 
           // --- FIREBASE AUTH & SYNC ---
           useEffect(() => {
@@ -287,7 +283,7 @@
           useEffect(() => {
             if (!user) return;
 
-            // Listen to Shared Settings
+            // Listen to Shared Settings (Global across devices)
             const settingsRef = doc(db, 'artifacts', APP_ID, 'public', 'data', 'settings', 'sharedSettings');
             const unsubSettings = onSnapshot(settingsRef, (docSnap) => {
               if (docSnap.exists()) {
@@ -295,16 +291,24 @@
                  if (data.businessCustomers) setBusinessCustomers(data.businessCustomers);
                  if (data.businessProducts) setBusinessProducts(data.businessProducts);
                  if (data.currencyPrefix) setCurrencyPrefix(data.currencyPrefix);
+                 if (data.hiddenCustomers) setHiddenCustomers(data.hiddenCustomers);
               }
             }, (err) => console.error("Settings listener error:", err));
 
-            // Listen to Shared Files (Metadata only)
+            // Listen to Shared Files
             const filesRef = collection(db, 'artifacts', APP_ID, 'public', 'data', 'files');
             const unsubFiles = onSnapshot(filesRef, (snap) => {
               const loadedFiles = [];
               snap.forEach(d => {
-                 loadedFiles.push(d.data());
+                 const data = d.data();
+                 // Parse the stringified JSON array
+                 let fileData = data.data;
+                 if (typeof fileData === 'string') {
+                     try { fileData = JSON.parse(fileData); } catch (e) { fileData = []; }
+                 }
+                 loadedFiles.push({ ...data, data: fileData });
               });
+              // Sort newest first
               setFiles(loadedFiles.sort((a,b) => parseInt(b.id) - parseInt(a.id)));
               setIsCloudSyncing(false);
             }, (err) => {
@@ -317,39 +321,6 @@
               unsubFiles();
             };
           }, [user]);
-
-          // Fetch chunks for files that are not locally cached yet
-          useEffect(() => {
-              if (!user) return;
-              files.forEach(async (fileMeta) => {
-                 if (!fileDataCache[fileMeta.id]) {
-                     // Handle backward compatibility (files saved directly before chunking)
-                     if (fileMeta.data) {
-                         try {
-                            const parsed = typeof fileMeta.data === 'string' ? JSON.parse(fileMeta.data) : fileMeta.data;
-                            setFileDataCache(prev => ({ ...prev, [fileMeta.id]: parsed }));
-                         } catch(e) {}
-                     } 
-                     // Handle new chunked files
-                     else if (fileMeta.chunksCount > 0) {
-                         try {
-                             let fullString = "";
-                             for (let i = 0; i < fileMeta.chunksCount; i++) {
-                                 const chunkRef = doc(db, 'artifacts', APP_ID, 'public', 'data', 'files', fileMeta.id, 'chunks', String(i));
-                                 const chunkDoc = await getDoc(chunkRef);
-                                 if (chunkDoc.exists()) fullString += chunkDoc.data().text;
-                             }
-                             if (fullString) {
-                                 const parsedData = JSON.parse(fullString);
-                                 setFileDataCache(prev => ({ ...prev, [fileMeta.id]: parsedData }));
-                             }
-                         } catch (err) {
-                             console.error(`Failed to load chunks for ${fileMeta.id}`, err);
-                         }
-                     }
-                 }
-              });
-          }, [files, user]);
 
           // Wrapper to sync settings changes to Firestore
           const updateCloudSettings = async (updates) => {
@@ -368,13 +339,20 @@
               updateCloudSettings({ businessProducts: newList });
           };
 
+          const handleSetHiddenCustomers = (newList) => {
+              setHiddenCustomers(newList);
+              updateCloudSettings({ hiddenCustomers: newList });
+          };
+
           const handleSetCurrencyPrefix = (prefix) => {
               setCurrencyPrefix(prefix);
               updateCloudSettings({ currencyPrefix: prefix });
           };
 
           // --- DATA PROCESSING ---
-          const allFilesData = useMemo(() => files.flatMap(f => fileDataCache[f.id] || []), [files, fileDataCache]);
+          const activeFile = files.find(f => f.id === activeFileId);
+          const csvData = activeFile ? activeFile.data : [];
+          const allFilesData = useMemo(() => files.flatMap(f => f.data), [files]);
 
           const { standardData, b2bData } = useMemo(() => {
             const standard = [];
@@ -384,6 +362,12 @@
               const custInfo = extractCustomerInfo(row);
               const pName = String(findCol(row, ['PRODUCTNAME', 'PRODUCT']) || 'Unknown Product').trim();
               
+              const isHidden = !showHiddenCustomers && hiddenCustomers.some(hc =>
+                hc.toLowerCase() === custInfo.name.toLowerCase() ||
+                hc.toLowerCase() === custInfo.id.toLowerCase()
+              );
+              if (isHidden) return;
+
               const isB2BCustomer = businessCustomers.some(bc => 
                   bc.toLowerCase() === custInfo.name.toLowerCase() || 
                   bc.toLowerCase() === custInfo.id.toLowerCase()
@@ -402,7 +386,7 @@
             });
 
             return { standardData: standard, b2bData: b2b };
-          }, [allFilesData, businessCustomers, includeB2B, businessProducts, includeB2BProducts]);
+          }, [allFilesData, businessCustomers, includeB2B, businessProducts, includeB2BProducts, hiddenCustomers, showHiddenCustomers]);
 
           const handleFileUpload = (e) => {
             const file = e.target.files[0];
@@ -468,41 +452,31 @@
             }
 
             const fileId = Date.now().toString();
-            
-            // Chunk the payload to avoid the 1MB Firestore limit
-            const dataString = JSON.stringify(pendingFile.data);
-            const CHUNK_SIZE = 800000; // Safe threshold under 1MB
-            const chunks = [];
-            for (let i = 0; i < dataString.length; i += CHUNK_SIZE) {
-                chunks.push(dataString.slice(i, i + CHUNK_SIZE));
-            }
-
-            const newFileMeta = {
+            const newFile = {
               id: fileId,
               name: `${month} ${year}`,
               originalName: pendingFile.originalName,
               headers: pendingFile.headers,
-              date: new Date().toLocaleDateString(),
-              rowCount: pendingFile.data.length,
-              chunksCount: chunks.length
+              data: pendingFile.data,
+              date: new Date().toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true })
             };
             
-            // Optimistic Local Update
-            setFiles(prev => [newFileMeta, ...prev]);
-            setFileDataCache(prev => ({ ...prev, [fileId]: pendingFile.data }));
+            // Optimistic UI Update
+            setFiles(prev => [newFile, ...prev]);
             setActiveFileId(fileId);
             setPendingFile(null);
 
+            // Save to Firestore (Stringify data to prevent complex nested array limits)
             try {
-              // 1. Save chunks to subcollection
-              for (let i = 0; i < chunks.length; i++) {
-                  const chunkRef = doc(db, 'artifacts', APP_ID, 'public', 'data', 'files', fileId, 'chunks', String(i));
-                  await setDoc(chunkRef, { text: chunks[i] });
-              }
-
-              // 2. Save metadata document
               const fileDocRef = doc(db, 'artifacts', APP_ID, 'public', 'data', 'files', fileId);
-              await setDoc(fileDocRef, newFileMeta);
+              await setDoc(fileDocRef, {
+                  id: fileId,
+                  name: newFile.name,
+                  originalName: newFile.originalName,
+                  headers: newFile.headers,
+                  date: newFile.date,
+                  data: JSON.stringify(newFile.data) 
+              });
             } catch (err) {
               console.error(err);
               setError("Failed to sync file to cloud: " + err.message);
@@ -510,29 +484,12 @@
           };
 
           const deleteFile = async (id) => {
-            // Delete locally
             setFiles(prev => prev.filter(f => f.id !== id));
-            setFileDataCache(prev => {
-                const newCache = { ...prev };
-                delete newCache[id];
-                return newCache;
-            });
             if (activeFileId === id) setActiveFileId(null);
             
-            // Delete globally
             if (user) {
-               try {
-                   const fileMeta = files.find(f => f.id === id);
-                   if (fileMeta && fileMeta.chunksCount) {
-                       for (let i = 0; i < fileMeta.chunksCount; i++) {
-                           await deleteDoc(doc(db, 'artifacts', APP_ID, 'public', 'data', 'files', id, 'chunks', String(i)));
-                       }
-                   }
-                   const fileDocRef = doc(db, 'artifacts', APP_ID, 'public', 'data', 'files', id);
-                   await deleteDoc(fileDocRef);
-               } catch (e) {
-                   console.error("Error deleting file:", e);
-               }
+               const fileDocRef = doc(db, 'artifacts', APP_ID, 'public', 'data', 'files', id);
+               await deleteDoc(fileDocRef).catch(console.error);
             }
           };
 
@@ -546,6 +503,9 @@
             setActiveTab(tab);
             setIsSidebarOpen(false);
           };
+
+          // Restrict gurunaturalsagro@gmail.com to upload section only
+          const isUploadOnly = user && user.email === 'gurunaturalsagro@gmail.com';
 
           // --- RENDER LOGIN OR APP ---
 
@@ -633,17 +593,17 @@
                     Upload CSV
                   </button>
                   
-                  <button
+                  {!isUploadOnly && <button
                     onClick={() => handleTabChange('overall')}
                     className={`w-full flex items-center px-4 py-3 rounded-xl transition-all duration-200 ${
                       activeTab === 'overall' ? 'bg-blue-900 text-white font-medium shadow-sm' : 'hover:bg-blue-900/50 text-blue-100'
-                }`}
+                    }`}
                   >
                     <LineChart className={`w-5 h-5 mr-3 ${activeTab === 'overall' ? 'text-white' : 'text-emerald-400'}`} />
                     Overall Revenue
-                  </button>
+                  </button>}
 
-                  <button
+                  {!isUploadOnly && <button
                     onClick={() => handleTabChange('customer')}
                     className={`w-full flex items-center px-4 py-3 rounded-xl transition-all duration-200 ${
                       activeTab === 'customer' ? 'bg-blue-900 text-white font-medium shadow-sm' : 'hover:bg-blue-900/50 text-blue-100'
@@ -651,9 +611,9 @@
                   >
                     <Users className={`w-5 h-5 mr-3 ${activeTab === 'customer' ? 'text-white' : 'text-purple-400'}`} />
                     Customer Analysis
-                  </button>
+                  </button>}
 
-                  <button
+                  {!isUploadOnly && <button
                     onClick={() => handleTabChange('product')}
                     className={`w-full flex items-center px-4 py-3 rounded-xl transition-all duration-200 ${
                       activeTab === 'product' ? 'bg-blue-900 text-white font-medium shadow-sm' : 'hover:bg-blue-900/50 text-blue-100'
@@ -661,9 +621,9 @@
                   >
                     <Package className={`w-5 h-5 mr-3 ${activeTab === 'product' ? 'text-white' : 'text-amber-400'}`} />
                     Product Analysis
-                  </button>
+                  </button>}
 
-                  <button
+                  {!isUploadOnly && <button
                     onClick={() => handleTabChange('business')}
                     className={`w-full flex items-center px-4 py-3 rounded-xl transition-all duration-200 ${
                       activeTab === 'business' ? 'bg-blue-900 text-white font-medium shadow-sm' : 'hover:bg-blue-900/50 text-blue-100'
@@ -671,9 +631,9 @@
                   >
                     <Building2 className={`w-5 h-5 mr-3 ${activeTab === 'business' ? 'text-white' : 'text-blue-400'}`} />
                     Business Customers
-                  </button>
+                  </button>}
                   
-                  <button
+                  {!isUploadOnly && <button
                     onClick={() => handleTabChange('settings')}
                     className={`w-full flex items-center px-4 py-3 rounded-xl transition-all duration-200 ${
                       activeTab === 'settings' ? 'bg-blue-900 text-white font-medium shadow-sm' : 'hover:bg-blue-900/50 text-blue-100'
@@ -681,8 +641,9 @@
                   >
                     <Settings className={`w-5 h-5 mr-3 ${activeTab === 'settings' ? 'text-white' : 'text-rose-400'}`} />
                     Settings
-                  </button>
+                  </button>}
 
+                  {/* Spacer to push logout to bottom */}
                   <div className="flex-1"></div>
 
                   <div className="border-t border-blue-900/50 pt-4 mt-6">
@@ -699,6 +660,7 @@
 
               {/* MAIN CONTENT */}
               <main className="flex-1 flex flex-col h-screen overflow-hidden w-full">
+                {/* Unified Header */}
                 <header className="h-16 bg-white/80 backdrop-blur-md flex items-center justify-between px-4 md:px-8 border-b border-slate-200 shadow-sm z-10 flex-shrink-0">
                   <div className="flex items-center">
                     <button 
@@ -724,14 +686,7 @@
                   </div>
 
                   <div className="flex items-center gap-3">
-                    {isDownloadingChunks && (
-                        <div className="hidden sm:flex items-center text-xs font-bold text-amber-600 bg-amber-50 border border-amber-100 px-2.5 py-1.5 rounded-full">
-                           <Activity className="w-3 h-3 mr-1.5 animate-spin" />
-                           Downloading Data...
-                        </div>
-                    )}
-
-                    {user && !isCloudSyncing && !isDownloadingChunks && (
+                    {user && !isCloudSyncing && (
                        <div className="hidden sm:flex items-center text-xs font-bold text-emerald-600 bg-emerald-50 border border-emerald-100 px-2.5 py-1.5 rounded-full">
                           <Cloud className="w-3.5 h-3.5 mr-1" />
                           Live Sync
@@ -747,6 +702,7 @@
                   </div>
                 </header>
 
+                {/* Scrollable Content Area */}
                 <div className="flex-1 overflow-auto p-4 md:p-8">
                   <div className="max-w-6xl mx-auto h-full">
                     {activeTab === 'upload' && (
@@ -816,6 +772,11 @@
                         setBusinessCustomers={handleSetBusinessCustomers}
                         businessProducts={businessProducts}
                         setBusinessProducts={handleSetBusinessProducts}
+                        hiddenCustomers={hiddenCustomers}
+                        setHiddenCustomers={handleSetHiddenCustomers}
+                        showHiddenCustomers={showHiddenCustomers}
+                        setShowHiddenCustomers={setShowHiddenCustomers}
+                        allFilesData={allFilesData}
                       />
                     )}
                   </div>
@@ -836,7 +797,7 @@
           const [filterYear, setFilterYear] = useState('all');
 
           const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-          const years = Array.from({length: 100}, (_, i) => (new Date().getFullYear() - 10 + i).toString());
+          const years = Array.from({length: 100}, (_, i) => (new Date().getFullYear() - 50 + i).toString());
 
           const filteredFiles = files.filter(file => {
             const monthMatch = filterMonth === 'all' || file.name.includes(filterMonth);
@@ -849,22 +810,23 @@
               
               {/* TOP: Smaller Upload Area */}
               <div className="bg-white rounded-3xl shadow-sm border border-slate-200 p-5 sm:p-6 md:p-8">
-                <div className="flex items-center justify-between mb-6 gap-2">
+                <div className="flex items-center justify-between mb-6">
                   <div>
                     <h2 className="text-xl font-bold text-slate-800">Upload CSV File</h2>
-                    <p className="text-sm text-slate-500 mt-1 hidden sm:block">Files automatically sync to your connected cloud dashboard.</p>
+                    <p className="text-sm text-slate-500 mt-1">Files automatically sync to your connected cloud dashboard.</p>
                   </div>
-                  <div className="flex items-center gap-2 sm:gap-3">
-                    <a 
-                      href="https://gurucsvfilecleaner.netlify.app/" 
-                      target="_blank" 
-                      rel="noopener noreferrer" 
-                      className="flex items-center text-xs sm:text-sm font-bold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 px-3 sm:px-4 py-2 rounded-xl transition-colors shadow-sm whitespace-nowrap"
+                  <div className="flex items-center gap-3 ml-4">
+                    <a
+                      href="https://gurucsvfilecleaner.netlify.app/"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-sm font-semibold shadow-sm transition-all whitespace-nowrap"
                     >
+                      <FileSpreadsheet className="w-4 h-4" />
                       Data Cleaner
                     </a>
-                    <div className="w-10 h-10 sm:w-12 sm:h-12 bg-indigo-50 text-indigo-500 rounded-full flex items-center justify-center flex-shrink-0">
-                      <UploadCloud className="w-5 h-5 sm:w-6 sm:h-6" />
+                    <div className="w-12 h-12 bg-indigo-50 text-indigo-500 rounded-full flex items-center justify-center flex-shrink-0">
+                      <UploadCloud className="w-6 h-6" />
                     </div>
                   </div>
                 </div>
@@ -1024,7 +986,7 @@
                               <div className="flex items-center text-xs text-slate-500 mt-1 space-x-3">
                                 <span>{file.date}</span>
                                 <span className="w-1 h-1 rounded-full bg-slate-300"></span>
-                                <span>{(file.rowCount || 0).toLocaleString()} rows</span>
+                                <span>{file.data.length.toLocaleString()} rows</span>
                               </div>
                             </div>
                           </div>
@@ -1036,6 +998,27 @@
                               title="Delete file"
                             >
                               <Trash2 className="w-5 h-5 sm:w-4 sm:h-4" />
+                            </button>
+                            <button
+                              onClick={() => {
+                                const headers = file.headers || Object.keys(file.data[0] || {});
+                                const rows = file.data.map(row => headers.map(h => {
+                                  const v = row[h] !== undefined ? String(row[h]) : '';
+                                  return v.includes(',') || v.includes('"') ? `"${v.replace(/"/g, '""')}"` : v;
+                                }).join(','));
+                                const csvContent = [headers.join(','), ...rows].join('\n');
+                                const blob = new Blob([csvContent], { type: 'text/csv' });
+                                const url = URL.createObjectURL(blob);
+                                const a = document.createElement('a');
+                                a.href = url;
+                                a.download = `${file.name}.csv`;
+                                a.click();
+                                URL.revokeObjectURL(url);
+                              }}
+                              className="p-2 text-slate-400 hover:text-indigo-500 hover:bg-indigo-50 rounded-lg transition-colors"
+                              title="Download file"
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 sm:w-4 sm:h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                             </button>
                             <button 
                               onClick={() => selectFile(file.id)}
@@ -1129,7 +1112,7 @@
           const [endDate, setEndDate] = useState('');
 
           const monthsList = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-          const yearsList = Array.from({length: 100}, (_, i) => (new Date().getFullYear() - 10 + i).toString());
+          const yearsList = Array.from({length: 11}, (_, i) => (new Date().getFullYear() - 5 + i).toString());
 
           const getHeadline = () => {
             if (filterType === 'current') return `${monthsList[new Date().getMonth()].toUpperCase()} ${new Date().getFullYear()}`;
@@ -1605,6 +1588,7 @@
           );
         }
 
+        // --- 2. CUSTOMER ANALYSIS SECTION ---
         function CustomerSection({ data, currencyPrefix, goToUpload, includeB2B, setIncludeB2B, includeB2BProducts, setIncludeB2BProducts }) {
           const [filterType, setFilterType] = useState('current'); 
           const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth().toString());
@@ -1627,7 +1611,7 @@
           const dropdownRef = useRef(null);
 
           const monthsList = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-          const yearsList = Array.from({length: 100}, (_, i) => (new Date().getFullYear() - 10 + i).toString());
+          const yearsList = Array.from({length: 11}, (_, i) => (new Date().getFullYear() - 5 + i).toString());
 
           React.useEffect(() => {
             const handleClickOutside = (event) => {
@@ -1677,8 +1661,8 @@
           }, [data]);
 
           const allKnownCustomers = useMemo(() => {
-             if (!globalStats) return [];
-             return Object.entries(globalStats.names).map(([id, name]) => ({id, name})).sort((a,b) => a.name.localeCompare(b.name));
+              if (!globalStats) return [];
+              return Object.entries(globalStats.names).map(([id, name]) => ({id, name})).sort((a,b) => a.name.localeCompare(b.name));
           }, [globalStats]);
 
           const baseData = useMemo(() => {
@@ -1963,7 +1947,7 @@
                       )}
 
                       {filterType === 'range' && (
-                        <div className="flex flex-col sm:flex-row sm:items-center gap-3 w-full animate-in fade-in">
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-3 w-full max-w-md animate-in fade-in">
                           <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="w-full sm:flex-1 bg-slate-50 border border-slate-200 text-slate-700 rounded-xl px-3 py-2 text-sm font-medium focus:ring-2 focus:ring-indigo-500 outline-none" />
                           <span className="text-slate-400 text-sm hidden sm:block">to</span>
                           <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="w-full sm:flex-1 bg-slate-50 border border-slate-200 text-slate-700 rounded-xl px-3 py-2 text-sm font-medium focus:ring-2 focus:ring-indigo-500 outline-none" />
@@ -2330,6 +2314,7 @@
           );
         }
 
+        // --- 3. PRODUCT ANALYSIS SECTION ---
         function ProductSection({ data, currencyPrefix, goToUpload, includeB2B, setIncludeB2B, includeB2BProducts, setIncludeB2BProducts }) {
           const [filterType, setFilterType] = useState('current'); 
           const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth().toString());
@@ -2352,7 +2337,7 @@
           const dropdownRef = useRef(null);
 
           const monthsList = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-          const yearsList = Array.from({length: 100}, (_, i) => (new Date().getFullYear() - 10 + i).toString());
+          const yearsList = Array.from({length: 11}, (_, i) => (new Date().getFullYear() - 5 + i).toString());
 
           React.useEffect(() => {
             const handleClickOutside = (event) => {
@@ -2684,7 +2669,7 @@
                       )}
 
                       {filterType === 'range' && (
-                        <div className="flex flex-col sm:flex-row sm:items-center gap-3 w-full animate-in fade-in">
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-3 w-full max-w-md animate-in fade-in">
                           <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="w-full sm:flex-1 bg-slate-50 border border-slate-200 text-slate-700 rounded-xl px-3 py-2 text-sm font-medium focus:ring-2 focus:ring-indigo-500 outline-none" />
                           <span className="text-slate-400 text-sm hidden sm:block">to</span>
                           <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="w-full sm:flex-1 bg-slate-50 border border-slate-200 text-slate-700 rounded-xl px-3 py-2 text-sm font-medium focus:ring-2 focus:ring-indigo-500 outline-none" />
@@ -3063,7 +3048,7 @@
           const [endDate, setEndDate] = useState('');
 
           const monthsList = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-          const yearsList = Array.from({length: 100}, (_, i) => (new Date().getFullYear() - 10 + i).toString());
+          const yearsList = Array.from({length: 11}, (_, i) => (new Date().getFullYear() - 5 + i).toString());
 
           const getHeadline = () => {
             if (filterType === 'current') return `${monthsList[new Date().getMonth()].toUpperCase()} ${new Date().getFullYear()}`;
@@ -3186,7 +3171,6 @@
           return (
             <div className="space-y-4 sm:space-y-6 animate-in slide-in-from-bottom-4 duration-500 pb-10">
               
-              {/* Filter Controls */}
               <div className="bg-white p-4 sm:p-6 rounded-3xl shadow-sm border border-slate-200">
                 <h2 className="text-2xl sm:text-3xl md:text-4xl font-black text-blue-900 tracking-tight uppercase mb-4 sm:mb-6 border-b border-slate-100 pb-4">
                   B2B: {getHeadline()}
@@ -3226,7 +3210,6 @@
                 </div>
               </div>
 
-              {/* Overview Cards */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                 <div className="bg-white rounded-3xl p-4 sm:p-6 shadow-sm border border-slate-100 flex items-center relative overflow-hidden">
                   <div className="absolute -right-4 -top-4 w-24 h-24 bg-blue-50 rounded-full flex items-center justify-center opacity-50">
@@ -3248,7 +3231,6 @@
                 </div>
               </div>
 
-              {/* Trend Chart */}
               <div className="bg-white rounded-3xl shadow-sm border border-slate-200 p-4 sm:p-6">
                 <div className="mb-2">
                   <h3 className="text-base font-bold text-slate-800 flex items-center">
@@ -3259,7 +3241,6 @@
                 <SimpleBarChart data={analytics.last12Months} currencyPrefix={currencyPrefix} labelKey="label" valueKey="value" height={180} minBarWidth="min-w-[60px]" scrollToEnd={true} />
               </div>
 
-              {/* Top B2B Customers List */}
               <div className="bg-white rounded-3xl shadow-sm border border-slate-200 p-4 sm:p-6 md:p-8">
                 <div className="mb-6 border-b border-slate-100 pb-4">
                   <h3 className="text-lg font-bold text-slate-800 flex items-center">
@@ -3304,9 +3285,28 @@
           );
         }
 
-        function SettingsSection({ currencyPrefix, setCurrencyPrefix, businessCustomers, setBusinessCustomers, businessProducts, setBusinessProducts }) {
+        function SettingsSection({ currencyPrefix, setCurrencyPrefix, businessCustomers, setBusinessCustomers, businessProducts, setBusinessProducts, hiddenCustomers, setHiddenCustomers, showHiddenCustomers, setShowHiddenCustomers, allFilesData }) {
           const [newB2B, setNewB2B] = useState('');
           const [newB2BProduct, setNewB2BProduct] = useState('');
+          const [hideSearchQuery, setHideSearchQuery] = useState('');
+          const [hideSearchResults, setHideSearchResults] = useState([]);
+
+          // Build unique customer list from all data for search
+          const allCustomerNames = useMemo(() => {
+            const names = new Set();
+            (allFilesData || []).forEach(row => {
+              const info = extractCustomerInfo(row);
+              if (info.name && info.name !== 'Unknown Customer' && info.name !== 'New Customer') names.add(info.name);
+            });
+            return Array.from(names).sort();
+          }, [allFilesData]);
+
+          // Live search as user types
+          React.useEffect(() => {
+            if (hideSearchQuery.trim().length < 1) { setHideSearchResults([]); return; }
+            const q = hideSearchQuery.trim().toLowerCase();
+            setHideSearchResults(allCustomerNames.filter(n => n.toLowerCase().includes(q) && !hiddenCustomers.includes(n)).slice(0, 8));
+          }, [hideSearchQuery, allCustomerNames, hiddenCustomers]);
 
           const handleAddB2B = (e) => {
             e.preventDefault();
@@ -3498,6 +3498,101 @@
                               onClick={() => removeB2BProduct(product)}
                               className="text-slate-400 hover:text-rose-500 hover:bg-rose-50 p-2 rounded-lg transition-colors flex-shrink-0"
                               title="Remove from B2B product list"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+              {/* Hide Customer Data */}
+              <div className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
+                <div className="p-4 sm:p-6 border-b border-slate-100 bg-rose-50/50">
+                  <h2 className="text-xl font-bold text-rose-900 flex items-center">
+                    <UserX className="w-5 h-5 mr-2 text-rose-500" />
+                    Hide Customer Data
+                  </h2>
+                  <p className="text-sm text-slate-500 mt-1">Hidden customers will be excluded from all analytics sections.</p>
+                </div>
+
+                <div className="p-4 sm:p-6 space-y-5">
+
+                  {/* Show Hidden Toggle */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-rose-50 border border-rose-100 rounded-2xl px-4 py-3">
+                    <div>
+                      <h4 className="font-semibold text-slate-700 text-sm">Show Hidden Customer Data</h4>
+                      <p className="text-xs text-slate-500 mt-0.5">When ON, hidden customers will appear across all sections.</p>
+                    </div>
+                    <button
+                      onClick={() => setShowHiddenCustomers(prev => !prev)}
+                      className={`relative inline-flex h-7 w-14 flex-shrink-0 items-center rounded-full transition-colors duration-200 focus:outline-none ${showHiddenCustomers ? 'bg-rose-500' : 'bg-slate-200'}`}
+                    >
+                      <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-md transition-transform duration-200 ${showHiddenCustomers ? 'translate-x-8' : 'translate-x-1'}`} />
+                    </button>
+                  </div>
+
+                  {/* Search + dropdown */}
+                  <div className="relative">
+                    <label className="block text-xs font-semibold text-slate-500 uppercase mb-1.5 ml-1">Search Customer to Hide</label>
+                    <div className="flex items-center gap-2">
+                      <div className="relative flex-1">
+                        <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                        <input
+                          type="text"
+                          value={hideSearchQuery}
+                          onChange={e => setHideSearchQuery(e.target.value)}
+                          placeholder="Type customer name..."
+                          className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl pl-9 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-rose-400"
+                        />
+                      </div>
+                    </div>
+                    {hideSearchResults.length > 0 && (
+                      <div className="absolute left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-xl z-20 overflow-hidden">
+                        {hideSearchResults.map((name, idx) => (
+                          <button
+                            key={idx}
+                            onClick={() => {
+                              setHiddenCustomers([...hiddenCustomers, name]);
+                              setHideSearchQuery('');
+                              setHideSearchResults([]);
+                            }}
+                            className="w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-rose-50 hover:text-rose-700 flex items-center gap-2 border-b border-slate-50 last:border-0 transition-colors"
+                          >
+                            <UserX className="w-4 h-4 text-rose-400 flex-shrink-0" />
+                            {name}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    {hideSearchQuery.trim().length >= 1 && hideSearchResults.length === 0 && (
+                      <p className="text-xs text-slate-400 mt-1.5 ml-1">No matching customers found (already hidden or not in data).</p>
+                    )}
+                  </div>
+
+                  {/* Hidden list */}
+                  <div>
+                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Hidden Customers ({hiddenCustomers.length})</h4>
+                    {hiddenCustomers.length === 0 ? (
+                      <div className="text-center py-6 border-2 border-dashed border-slate-200 rounded-xl bg-slate-50 text-sm text-slate-500 px-4">
+                        No customers hidden yet. Data from all customers is visible.
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {hiddenCustomers.map((name, idx) => (
+                          <div key={idx} className="flex items-center justify-between bg-white border border-slate-200 rounded-xl p-3 shadow-sm hover:border-rose-300 transition-colors">
+                            <div className="flex items-center overflow-hidden">
+                              <div className="w-8 h-8 bg-rose-50 text-rose-500 rounded-full flex items-center justify-center mr-3 flex-shrink-0">
+                                <UserX className="w-4 h-4" />
+                              </div>
+                              <span className="font-semibold text-slate-700 text-sm truncate">{name}</span>
+                            </div>
+                            <button
+                              onClick={() => setHiddenCustomers(hiddenCustomers.filter(n => n !== name))}
+                              className="text-slate-400 hover:text-rose-500 hover:bg-rose-50 p-2 rounded-lg transition-colors flex-shrink-0"
+                              title="Unhide customer"
                             >
                               <Trash2 className="w-4 h-4" />
                             </button>
