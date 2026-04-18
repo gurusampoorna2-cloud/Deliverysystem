@@ -8,7 +8,7 @@
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <!-- Custom Scrollbar & Animations Styles (Translated from Tailwind equivalents) -->
+    <!-- Custom Scrollbar & Animations Styles -->
     <style>
         .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
@@ -72,7 +72,6 @@
         const provider = new GoogleAuthProvider();
         const db = getFirestore(app);
 
-        // Updated to match the specific security rule path provided
         const APP_ID = "guru-salary-dashboard"; 
 
         // --- UTILS: CSV Parser ---
@@ -201,7 +200,6 @@
           return parts.join(' + ');
         };
 
-        // Missing NoDataPrompt Component addition
         function NoDataPrompt({ goToUpload }) {
           return (
             <div className="h-full flex flex-col items-center justify-center text-center animate-in py-20 px-4">
@@ -225,13 +223,11 @@
           const [error, setError] = useState('');
           const [currencyPrefix, setCurrencyPrefix] = useState('₹');
           
-          // Cloud Sync & Auth State
           const [user, setUser] = useState(null);
           const [isCheckingAuth, setIsCheckingAuth] = useState(true);
           const [authError, setAuthError] = useState('');
           const [isCloudSyncing, setIsCloudSyncing] = useState(true);
 
-          // Business States
           const [businessCustomers, setBusinessCustomers] = useState([]);
           const [includeB2B, setIncludeB2B] = useState(false);
           const [businessProducts, setBusinessProducts] = useState([]);
@@ -246,7 +242,6 @@
           useEffect(() => {
             const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
               if (currentUser) {
-                // Enforce the user's explicit security rules on the frontend
                 const allowedEmails = [
                   'gurunaturalsagro@gmail.com',
                   'govindpatidar789@gmail.com',
@@ -257,7 +252,6 @@
                 if (allowedEmails.includes(currentUser.email)) {
                   setUser(currentUser);
                   setAuthError('');
-                  // Force restricted users to upload tab only
                   if (currentUser.email === 'gurunaturalsagro@gmail.com') {
                     setActiveTab('upload');
                   }
@@ -288,7 +282,6 @@
           useEffect(() => {
             if (!user) return;
 
-            // Listen to Shared Settings (Global across devices)
             const settingsRef = doc(db, 'artifacts', APP_ID, 'public', 'data', 'settings', 'sharedSettings');
             const unsubSettings = onSnapshot(settingsRef, (docSnap) => {
               if (docSnap.exists()) {
@@ -301,20 +294,17 @@
               }
             }, (err) => console.error("Settings listener error:", err));
 
-            // Listen to Shared Files
             const filesRef = collection(db, 'artifacts', APP_ID, 'public', 'data', 'files');
             const unsubFiles = onSnapshot(filesRef, (snap) => {
               const loadedFiles = [];
               snap.forEach(d => {
                  const data = d.data();
-                 // Parse the stringified JSON array
                  let fileData = data.data;
                  if (typeof fileData === 'string') {
                      try { fileData = JSON.parse(fileData); } catch (e) { fileData = []; }
                  }
                  loadedFiles.push({ ...data, data: fileData });
               });
-              // Sort newest first
               setFiles(loadedFiles.sort((a,b) => parseInt(b.id) - parseInt(a.id)));
               setIsCloudSyncing(false);
             }, (err) => {
@@ -328,7 +318,6 @@
             };
           }, [user]);
 
-          // Wrapper to sync settings changes to Firestore
           const updateCloudSettings = async (updates) => {
              if (!user) return;
              const settingsRef = doc(db, 'artifacts', APP_ID, 'public', 'data', 'settings', 'sharedSettings');
@@ -383,9 +372,8 @@
               const custInfo = extractCustomerInfo(row);
               const pName = String(findCol(row, ['PRODUCTNAME', 'PRODUCT']) || 'Unknown Product').trim();
               
-              // Hidden Customers Check
               const isHidden = !showHiddenCustomers && hiddenCustomers.some(hc => hc.id === custInfo.id);
-              if (isHidden) return; // Skip completely
+              if (isHidden) return; 
 
               const isB2BCustomer = businessCustomers.some(bc => 
                   bc.toLowerCase() === custInfo.name.toLowerCase() || 
@@ -428,7 +416,6 @@
                   return;
                 }
 
-                // Auto-detect business customers (missing or NA id)
                 const autoB2b = new Set();
                 parsedData.forEach(row => {
                   let id = String(findCol(row, ['CUSTOMERID', 'CUSTID', 'ID']) || '').trim();
@@ -480,12 +467,10 @@
               date: new Date().toLocaleString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true })
             };
             
-            // Optimistic UI Update
             setFiles(prev => [newFile, ...prev]);
             setActiveFileId(fileId);
             setPendingFile(null);
 
-            // Save to Firestore (Stringify data to prevent complex nested array limits)
             try {
               const fileDocRef = doc(db, 'artifacts', APP_ID, 'public', 'data', 'files', fileId);
               await setDoc(fileDocRef, {
@@ -577,7 +562,6 @@
 
           return (
             <div className="flex h-screen bg-slate-50 font-sans text-slate-800 relative overflow-hidden">
-              {/* OVERLAY */}
               {isSidebarOpen && (
                 <div 
                   className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-40 transition-opacity"
@@ -585,7 +569,6 @@
                 />
               )}
 
-              {/* SIDEBAR */}
               <aside className={`fixed inset-y-0 left-0 w-72 bg-blue-950 border-r border-blue-900 flex flex-col shadow-2xl z-50 transform transition-transform duration-300 ease-in-out ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
                 <div className="h-16 flex items-center justify-between px-6 border-b border-blue-900">
                   <div className="flex items-center">
@@ -665,7 +648,6 @@
                     </>
                   )}
 
-                  {/* Spacer to push logout to bottom */}
                   <div className="flex-1"></div>
 
                   <div className="border-t border-blue-900/50 pt-4 mt-6">
@@ -680,9 +662,7 @@
                 </nav>
               </aside>
 
-              {/* MAIN CONTENT */}
               <main className="flex-1 flex flex-col h-screen overflow-hidden w-full">
-                {/* Unified Header */}
                 <header className="h-16 bg-white/80 backdrop-blur-md flex items-center justify-between px-4 md:px-8 border-b border-slate-200 shadow-sm z-10 flex-shrink-0">
                   <div className="flex items-center">
                     <button 
@@ -724,7 +704,6 @@
                   </div>
                 </header>
 
-                {/* Scrollable Content Area */}
                 <div className="flex-1 overflow-auto p-4 md:p-8">
                   <div className="max-w-6xl mx-auto h-full">
                     {activeTab === 'upload' && (
@@ -832,7 +811,6 @@
             const rows = file.data.map(obj => 
               file.headers.map(header => {
                 let cell = obj[header] === null || obj[header] === undefined ? '' : String(obj[header]);
-                // Wrap in quotes if it contains comma or quotes to preserve CSV structure
                 if (cell.includes(',') || cell.includes('"') || cell.includes('\n')) {
                   cell = `"${cell.replace(/"/g, '""')}"`;
                 }
@@ -853,7 +831,6 @@
           return (
             <div className="h-full flex flex-col space-y-6 animate-in fade-in duration-500 max-w-4xl mx-auto pb-8">
               
-              {/* TOP: Smaller Upload Area */}
               <div className="bg-white rounded-3xl shadow-sm border border-slate-200 p-5 sm:p-6 md:p-8">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
                   <div>
@@ -951,7 +928,6 @@
                 )}
               </div>
 
-              {/* BOTTOM: Uploaded Files List */}
               <div className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden flex-1 flex flex-col">
                 <div className="p-5 sm:p-6 border-b border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <h2 className="text-lg font-bold text-slate-800 flex items-center">
@@ -1421,41 +1397,20 @@
                   <div className="flex flex-col gap-2 border-b lg:border-b-0 lg:border-r border-slate-100 pb-4 lg:pb-0 lg:pr-6 overflow-hidden">
                     <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Time Filter</span>
                     <div className="flex gap-2 overflow-x-auto pb-2 sm:pb-0 custom-scrollbar w-full">
-                      <button 
-                        onClick={() => setFilterType('current')}
-                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap flex-shrink-0 ${filterType === 'current' ? 'bg-indigo-600 text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
-                      >
-                        Current Month
-                      </button>
-                      <button 
-                        onClick={() => setFilterType('monthYear')}
-                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap flex-shrink-0 ${filterType === 'monthYear' ? 'bg-indigo-600 text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
-                      >
-                        By Month/Year
-                      </button>
-                      <button 
-                        onClick={() => setFilterType('range')}
-                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap flex-shrink-0 ${filterType === 'range' ? 'bg-indigo-600 text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
-                      >
-                        Custom Range
-                      </button>
+                      <button onClick={() => setFilterType('current')} className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap flex-shrink-0 ${filterType === 'current' ? 'bg-indigo-600 text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>Current Month</button>
+                      <button onClick={() => setFilterType('monthYear')} className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap flex-shrink-0 ${filterType === 'monthYear' ? 'bg-indigo-600 text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>By Month/Year</button>
+                      <button onClick={() => setFilterType('range')} className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap flex-shrink-0 ${filterType === 'range' ? 'bg-indigo-600 text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>Custom Range</button>
                     </div>
                   </div>
 
                   <div className="flex-1 flex items-center gap-4 w-full">
                     {filterType === 'monthYear' && (
                       <div className="flex flex-col sm:flex-row gap-3 w-full sm:max-w-sm animate-in fade-in">
-                        <select 
-                          value={selectedMonth} onChange={e => setSelectedMonth(e.target.value)}
-                          className="w-full sm:flex-1 bg-slate-50 border border-slate-200 text-slate-700 rounded-xl px-4 py-2 text-sm font-medium focus:ring-2 focus:ring-indigo-500 outline-none"
-                        >
+                        <select value={selectedMonth} onChange={e => setSelectedMonth(e.target.value)} className="w-full sm:flex-1 bg-slate-50 border border-slate-200 text-slate-700 rounded-xl px-4 py-2 text-sm font-medium focus:ring-2 focus:ring-indigo-500 outline-none">
                           <option value="all">All Months</option>
                           {monthsList.map((m, i) => <option key={i} value={i}>{m}</option>)}
                         </select>
-                        <select 
-                          value={selectedYear} onChange={e => setSelectedYear(e.target.value)}
-                          className="w-full sm:w-1/3 bg-slate-50 border border-slate-200 text-slate-700 rounded-xl px-4 py-2 text-sm font-medium focus:ring-2 focus:ring-indigo-500 outline-none"
-                        >
+                        <select value={selectedYear} onChange={e => setSelectedYear(e.target.value)} className="w-full sm:w-1/3 bg-slate-50 border border-slate-200 text-slate-700 rounded-xl px-4 py-2 text-sm font-medium focus:ring-2 focus:ring-indigo-500 outline-none">
                           <option value="all">All Years</option>
                           {yearsList.map(y => <option key={y} value={y}>{y}</option>)}
                         </select>
@@ -1464,17 +1419,9 @@
 
                     {filterType === 'range' && (
                       <div className="flex flex-col sm:flex-row sm:items-center gap-3 w-full max-w-md animate-in fade-in">
-                        <input 
-                          type="date" 
-                          value={startDate} onChange={e => setStartDate(e.target.value)}
-                          className="w-full sm:flex-1 bg-slate-50 border border-slate-200 text-slate-700 rounded-xl px-3 py-2 text-sm font-medium focus:ring-2 focus:ring-indigo-500 outline-none"
-                        />
+                        <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="w-full sm:flex-1 bg-slate-50 border border-slate-200 text-slate-700 rounded-xl px-3 py-2 text-sm font-medium focus:ring-2 focus:ring-indigo-500 outline-none" />
                         <span className="text-slate-400 text-sm hidden sm:block">to</span>
-                        <input 
-                          type="date" 
-                          value={endDate} onChange={e => setEndDate(e.target.value)}
-                          className="w-full sm:flex-1 bg-slate-50 border border-slate-200 text-slate-700 rounded-xl px-3 py-2 text-sm font-medium focus:ring-2 focus:ring-indigo-500 outline-none"
-                        />
+                        <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="w-full sm:flex-1 bg-slate-50 border border-slate-200 text-slate-700 rounded-xl px-3 py-2 text-sm font-medium focus:ring-2 focus:ring-indigo-500 outline-none" />
                       </div>
                     )}
                   </div>
@@ -1620,7 +1567,7 @@
           );
         }
 
-        // --- 2. CUSTOMER ANALYSIS SECTION ---
+        // --- CUSTOMER ANALYSIS SECTION ---
         function CustomerSection({ data, currencyPrefix, goToUpload, includeB2B, setIncludeB2B, includeB2BProducts, setIncludeB2BProducts }) {
           const [filterType, setFilterType] = useState('current'); 
           const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth().toString());
@@ -2346,7 +2293,7 @@
           );
         }
 
-        // --- 3. PRODUCT ANALYSIS SECTION ---
+        // --- PRODUCT ANALYSIS SECTION ---
         function ProductSection({ data, currencyPrefix, goToUpload, includeB2B, setIncludeB2B, includeB2BProducts, setIncludeB2BProducts }) {
           const [filterType, setFilterType] = useState('current'); 
           const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth().toString());
@@ -3072,6 +3019,7 @@
           );
         }
 
+        // --- BUSINESS SECTION ---
         function BusinessSection({ data, currencyPrefix, goToUpload }) {
           const [filterType, setFilterType] = useState('current'); 
           const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth().toString());
@@ -3313,6 +3261,334 @@
                   )}
                 </div>
               </div>
+            </div>
+          );
+        }
+
+        // --- SETTINGS SECTION ---
+        function SettingsSection({ currencyPrefix, setCurrencyPrefix, businessCustomers, setBusinessCustomers, businessProducts, setBusinessProducts, hiddenCustomers, setHiddenCustomers, showHiddenCustomers, toggleShowHiddenCustomers, allKnownCustomersList }) {
+          const [newB2B, setNewB2B] = useState('');
+          const [newB2BProduct, setNewB2BProduct] = useState('');
+          
+          const [hiddenSearch, setHiddenSearch] = useState('');
+          const [isHiddenDropdownOpen, setIsHiddenDropdownOpen] = useState(false);
+          const hiddenDropdownRef = useRef(null);
+
+          useEffect(() => {
+              const handleClickOutside = (event) => {
+                  if (hiddenDropdownRef.current && !hiddenDropdownRef.current.contains(event.target)) {
+                      setIsHiddenDropdownOpen(false);
+                  }
+              };
+              document.addEventListener('mousedown', handleClickOutside);
+              return () => document.removeEventListener('mousedown', handleClickOutside);
+          }, []);
+
+          const filteredHiddenSearch = allKnownCustomersList.filter(c => 
+              c.name.toLowerCase().includes(hiddenSearch.toLowerCase()) || 
+              c.id.toLowerCase().includes(hiddenSearch.toLowerCase())
+          );
+
+          const addHiddenCustomer = (cust) => {
+              if (!hiddenCustomers.some(hc => hc.id === cust.id)) {
+                  setHiddenCustomers([...hiddenCustomers, cust]);
+              }
+              setHiddenSearch('');
+              setIsHiddenDropdownOpen(false);
+          };
+
+          const removeHiddenCustomer = (idToRemove) => {
+              setHiddenCustomers(hiddenCustomers.filter(hc => hc.id !== idToRemove));
+          };
+
+          const handleAddB2B = (e) => {
+            e.preventDefault();
+            if (newB2B.trim() === '') return;
+            if (!businessCustomers.some(c => c.toLowerCase() === newB2B.trim().toLowerCase())) {
+              setBusinessCustomers([...businessCustomers, newB2B.trim()]);
+            }
+            setNewB2B('');
+          };
+
+          const removeB2B = (nameToRemove) => {
+            setBusinessCustomers(businessCustomers.filter(name => name !== nameToRemove));
+          };
+
+          const handleAddB2BProduct = (e) => {
+            e.preventDefault();
+            if (newB2BProduct.trim() === '') return;
+            if (!businessProducts.some(p => p.toLowerCase() === newB2BProduct.trim().toLowerCase())) {
+              setBusinessProducts([...businessProducts, newB2BProduct.trim()]);
+            }
+            setNewB2BProduct('');
+          };
+
+          const removeB2BProduct = (nameToRemove) => {
+            setBusinessProducts(businessProducts.filter(name => name !== nameToRemove));
+          };
+
+          return (
+            <div className="max-w-3xl mx-auto space-y-4 sm:space-y-6 animate-in slide-in-from-bottom-4 duration-500 pb-10">
+              
+              {/* General Settings */}
+              <div className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
+                <div className="p-4 sm:p-6 border-b border-slate-100 bg-slate-50/50">
+                  <h2 className="text-xl font-bold text-slate-800 flex items-center">
+                    <Settings className="w-5 h-5 mr-2 text-rose-400" />
+                    Dashboard Preferences
+                  </h2>
+                  <p className="text-sm text-slate-500 mt-1">Customize how your analytics are displayed.</p>
+                </div>
+                
+                <div className="p-4 sm:p-6 space-y-6">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div>
+                      <h4 className="font-semibold text-slate-700 text-sm">Currency Symbol</h4>
+                      <p className="text-xs text-slate-500 mt-1">Select the prefix for monetary values in analysis.</p>
+                    </div>
+                    <select 
+                      value={currencyPrefix}
+                      onChange={(e) => setCurrencyPrefix(e.target.value)}
+                      className="bg-slate-50 border border-slate-200 text-slate-700 rounded-xl px-4 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 w-full sm:w-auto"
+                    >
+                      <option value="$">USD ($)</option>
+                      <option value="€">EUR (€)</option>
+                      <option value="£">GBP (£)</option>
+                      <option value="₹">INR (₹)</option>
+                      <option value="¥">JPY (¥)</option>
+                      <option value="">None</option>
+                    </select>
+                  </div>
+                  <hr className="border-slate-100" />
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 opacity-60">
+                    <div>
+                      <h4 className="font-semibold text-slate-700 text-sm">Theme Mode (Coming Soon)</h4>
+                      <p className="text-xs text-slate-500 mt-1">Toggle between light and dark visualization modes.</p>
+                    </div>
+                    <div className="flex bg-slate-100 rounded-xl p-1 pointer-events-none w-full sm:w-auto justify-center">
+                      <button className="flex-1 sm:flex-none px-4 py-1.5 text-xs font-semibold bg-white shadow-sm rounded-lg text-slate-800">Light</button>
+                      <button className="flex-1 sm:flex-none px-4 py-1.5 text-xs font-semibold text-slate-500 rounded-lg">Dark</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Hidden Customers Management */}
+              <div className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-visible">
+                <div className="p-4 sm:p-6 border-b border-slate-100 bg-rose-50/50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div>
+                    <h2 className="text-xl font-bold text-rose-900 flex items-center">
+                      <UserX className="w-5 h-5 mr-2 text-rose-600" />
+                      Hidden Customers Management
+                    </h2>
+                    <p className="text-sm text-slate-500 mt-1">Hide specific customers from all analytics. You can toggle their visibility below.</p>
+                  </div>
+                  
+                  <div className="flex items-center gap-3 bg-white px-4 py-2.5 rounded-xl border border-slate-200 shadow-sm">
+                    <span className="text-sm font-semibold text-slate-700">Show Hidden Data</span>
+                    <button 
+                      onClick={toggleShowHiddenCustomers}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none flex-shrink-0 ${showHiddenCustomers ? 'bg-indigo-600' : 'bg-slate-300'}`}
+                    >
+                      <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${showHiddenCustomers ? 'translate-x-6' : 'translate-x-1'}`} />
+                    </button>
+                  </div>
+                </div>
+
+                <div className="p-4 sm:p-6">
+                  <div className="relative mb-6" ref={hiddenDropdownRef}>
+                    <div className="flex items-center bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 focus-within:ring-2 focus-within:ring-rose-500 transition-all">
+                      <Search className="w-4 h-4 text-slate-400 mr-2 flex-shrink-0" />
+                      <input 
+                        type="text"
+                        value={hiddenSearch}
+                        onChange={e => {
+                          setHiddenSearch(e.target.value);
+                          setIsHiddenDropdownOpen(true);
+                        }}
+                        onFocus={() => setIsHiddenDropdownOpen(true)}
+                        placeholder="Search and select customer to hide..."
+                        className="w-full bg-transparent border-none focus:outline-none text-sm text-slate-700"
+                      />
+                    </div>
+                    
+                    {isHiddenDropdownOpen && hiddenSearch && (
+                      <div className="absolute top-full left-0 mt-2 w-full bg-white border border-slate-200 rounded-xl shadow-xl overflow-hidden flex flex-col max-h-[250px] z-50">
+                        <ul className="overflow-y-auto flex-1 p-1 custom-scrollbar">
+                          {filteredHiddenSearch.length > 0 ? filteredHiddenSearch.map(c => (
+                            <li 
+                              key={c.id}
+                              onClick={() => addHiddenCustomer(c)}
+                              className="px-3 py-2.5 hover:bg-rose-50 hover:text-rose-700 rounded-lg cursor-pointer text-sm transition-colors flex flex-col text-slate-700"
+                            >
+                              <span className="font-semibold truncate">{c.name}</span>
+                              <span className="text-[10px] text-slate-400 font-mono truncate mt-0.5">ID: {c.id}</span>
+                            </li>
+                          )) : (
+                            <li className="px-3 py-4 text-center text-sm text-slate-400">No matching customers.</li>
+                          )}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Currently Hidden Customers ({hiddenCustomers.length})</h4>
+                    {hiddenCustomers.length === 0 ? (
+                      <div className="text-center py-6 border-2 border-dashed border-slate-200 rounded-xl bg-slate-50 text-sm text-slate-500 px-4">
+                        No customers are currently hidden.
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {hiddenCustomers.map((customer, idx) => (
+                          <div key={idx} className="flex items-center justify-between bg-white border border-slate-200 rounded-xl p-3 shadow-sm hover:border-rose-300 transition-colors">
+                            <div className="flex items-center overflow-hidden">
+                              <div className="w-8 h-8 bg-rose-50 text-rose-600 rounded-full flex items-center justify-center mr-3 flex-shrink-0">
+                                <UserX className="w-4 h-4" />
+                              </div>
+                              <div className="flex flex-col overflow-hidden">
+                                <span className="font-semibold text-slate-700 text-sm truncate">{customer.name}</span>
+                                <span className="text-[10px] text-slate-400 font-mono truncate mt-0.5">ID: {customer.id}</span>
+                              </div>
+                            </div>
+                            <button 
+                              onClick={() => removeHiddenCustomer(customer.id)}
+                              className="text-slate-400 hover:text-rose-500 hover:bg-rose-50 p-2 rounded-lg transition-colors flex-shrink-0"
+                              title="Remove from hidden list"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Business Customer Management */}
+              <div className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
+                <div className="p-4 sm:p-6 border-b border-slate-100 bg-blue-50/50">
+                  <h2 className="text-xl font-bold text-blue-900 flex items-center">
+                    <Building2 className="w-5 h-5 mr-2 text-blue-600" />
+                    Business Customer Management
+                  </h2>
+                  <p className="text-sm text-slate-500 mt-1">Add client names or IDs here to segregate their data into the B2B Analytics sections.</p>
+                </div>
+                
+                <div className="p-4 sm:p-6">
+                  <div className="flex items-start text-blue-600 bg-blue-50 px-4 py-3 rounded-xl border border-blue-200 text-sm w-full mb-5">
+                    <AlertCircle className="w-5 h-5 mr-3 flex-shrink-0 mt-0.5" />
+                    <p>
+                      <strong>Note:</strong> Customers with no ID or whose ID is "NA" are <span className="font-semibold underline">automatically</span> added to this list upon upload. You can manually remove them if they are not business customers.
+                    </p>
+                  </div>
+
+                  <form onSubmit={handleAddB2B} className="flex flex-col sm:flex-row gap-3 mb-6">
+                    <input 
+                      type="text" 
+                      value={newB2B}
+                      onChange={(e) => setNewB2B(e.target.value)}
+                      placeholder="Enter exact customer name or ID..."
+                      className="w-full sm:flex-1 bg-slate-50 border border-slate-200 text-slate-700 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                    <button 
+                      type="submit"
+                      className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-xl font-medium transition-colors shadow-sm whitespace-nowrap"
+                    >
+                      Add Client
+                    </button>
+                  </form>
+
+                  <div className="space-y-2">
+                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Identified Business Customers ({businessCustomers.length})</h4>
+                    {businessCustomers.length === 0 ? (
+                      <div className="text-center py-6 border-2 border-dashed border-slate-200 rounded-xl bg-slate-50 text-sm text-slate-500 px-4">
+                        No business customers added yet. (Auto-NA logic is still active).
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {businessCustomers.map((customer, idx) => (
+                          <div key={idx} className="flex items-center justify-between bg-white border border-slate-200 rounded-xl p-3 shadow-sm hover:border-blue-300 transition-colors">
+                            <div className="flex items-center overflow-hidden">
+                              <div className="w-8 h-8 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center mr-3 flex-shrink-0">
+                                <Building2 className="w-4 h-4" />
+                              </div>
+                              <span className="font-semibold text-slate-700 text-sm truncate">{customer}</span>
+                            </div>
+                            <button 
+                              onClick={() => removeB2B(customer)}
+                              className="text-slate-400 hover:text-rose-500 hover:bg-rose-50 p-2 rounded-lg transition-colors flex-shrink-0"
+                              title="Remove from B2B list"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+              
+              {/* Business Product Management */}
+              <div className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
+                <div className="p-4 sm:p-6 border-b border-slate-100 bg-amber-50/50">
+                  <h2 className="text-xl font-bold text-amber-900 flex items-center">
+                    <Package className="w-5 h-5 mr-2 text-amber-600" />
+                    Business Product Management
+                  </h2>
+                  <p className="text-sm text-slate-500 mt-1">Add product names here to globally exclude them from analysis unless "Include B2B Products" is toggled on.</p>
+                </div>
+                
+                <div className="p-4 sm:p-6">
+                  <form onSubmit={handleAddB2BProduct} className="flex flex-col sm:flex-row gap-3 mb-6">
+                    <input 
+                      type="text" 
+                      value={newB2BProduct}
+                      onChange={(e) => setNewB2BProduct(e.target.value)}
+                      placeholder="Enter exact product name from CSV..."
+                      className="w-full sm:flex-1 bg-slate-50 border border-slate-200 text-slate-700 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    />
+                    <button 
+                      type="submit"
+                      className="w-full sm:w-auto bg-amber-600 hover:bg-amber-700 text-white px-6 py-2.5 rounded-xl font-medium transition-colors shadow-sm whitespace-nowrap"
+                    >
+                      Add Product
+                    </button>
+                  </form>
+
+                  <div className="space-y-2">
+                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Identified Business Products ({businessProducts.length})</h4>
+                    {businessProducts.length === 0 ? (
+                      <div className="text-center py-6 border-2 border-dashed border-slate-200 rounded-xl bg-slate-50 text-sm text-slate-500 px-4">
+                        No business products added yet. B2B product exclusion is disabled.
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {businessProducts.map((product, idx) => (
+                          <div key={idx} className="flex items-center justify-between bg-white border border-slate-200 rounded-xl p-3 shadow-sm hover:border-amber-300 transition-colors">
+                            <div className="flex items-center overflow-hidden">
+                              <div className="w-8 h-8 bg-amber-50 text-amber-600 rounded-full flex items-center justify-center mr-3 flex-shrink-0">
+                                <Package className="w-4 h-4" />
+                              </div>
+                              <span className="font-semibold text-slate-700 text-sm truncate">{product}</span>
+                            </div>
+                            <button 
+                              onClick={() => removeB2BProduct(product)}
+                              className="text-slate-400 hover:text-rose-500 hover:bg-rose-50 p-2 rounded-lg transition-colors flex-shrink-0"
+                              title="Remove from B2B product list"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+              
             </div>
           );
         }
