@@ -773,7 +773,7 @@
           const [filterYear, setFilterYear] = useState('all');
 
           const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-          const years = Array.from({length: 100}, (_, i) => (new Date().getFullYear() - 5 + i).toString());
+          const years = Array.from({length: 11}, (_, i) => (new Date().getFullYear() - 5 + i).toString());
 
           const filteredFiles = files.filter(file => {
             const monthMatch = filterMonth === 'all' || file.name.includes(filterMonth);
@@ -1056,7 +1056,7 @@
           const [endDate, setEndDate] = useState('');
 
           const monthsList = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-          const yearsList = Array.from({length: 100}, (_, i) => (new Date().getFullYear() - 5 + i).toString());
+          const yearsList = Array.from({length: 11}, (_, i) => (new Date().getFullYear() - 5 + i).toString());
 
           const getHeadline = () => {
             if (filterType === 'current') return `${monthsList[new Date().getMonth()].toUpperCase()} ${new Date().getFullYear()}`;
@@ -1555,7 +1555,7 @@
           const dropdownRef = useRef(null);
 
           const monthsList = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-          const yearsList = Array.from({length: 100}, (_, i) => (new Date().getFullYear() - 5 + i).toString());
+          const yearsList = Array.from({length: 11}, (_, i) => (new Date().getFullYear() - 5 + i).toString());
 
           React.useEffect(() => {
             const handleClickOutside = (event) => {
@@ -2281,7 +2281,7 @@
           const dropdownRef = useRef(null);
 
           const monthsList = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-          const yearsList = Array.from({length: 100}, (_, i) => (new Date().getFullYear() - 5 + i).toString());
+          const yearsList = Array.from({length: 11}, (_, i) => (new Date().getFullYear() - 5 + i).toString());
 
           React.useEffect(() => {
             const handleClickOutside = (event) => {
@@ -2992,7 +2992,7 @@
           const [endDate, setEndDate] = useState('');
 
           const monthsList = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-          const yearsList = Array.from({length: 100}, (_, i) => (new Date().getFullYear() - 5 + i).toString());
+          const yearsList = Array.from({length: 11}, (_, i) => (new Date().getFullYear() - 5 + i).toString());
 
           const getHeadline = () => {
             if (filterType === 'current') return `${monthsList[new Date().getMonth()].toUpperCase()} ${new Date().getFullYear()}`;
