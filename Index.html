@@ -231,8 +231,6 @@
           const [authError, setAuthError] = useState('');
           const [isCloudSyncing, setIsCloudSyncing] = useState(true);
 
-          const isUploadOnlyUser = user?.email === 'gurunaturalsagro@gmail.com';
-
           // Business States
           const [businessCustomers, setBusinessCustomers] = useState([]);
           const [includeB2B, setIncludeB2B] = useState(false);
@@ -488,7 +486,7 @@
 
           const selectFile = (id) => {
             setActiveFileId(id);
-            if (!isUploadOnlyUser) setActiveTab('overall'); 
+            setActiveTab('overall'); 
             setIsSidebarOpen(false);
           };
 
@@ -583,59 +581,55 @@
                     Upload CSV
                   </button>
                   
-                  {!isUploadOnlyUser && (
-                    <>
-                      <button
-                        onClick={() => handleTabChange('overall')}
-                        className={`w-full flex items-center px-4 py-3 rounded-xl transition-all duration-200 ${
-                          activeTab === 'overall' ? 'bg-blue-900 text-white font-medium shadow-sm' : 'hover:bg-blue-900/50 text-blue-100'
-                        }`}
-                      >
-                        <LineChart className={`w-5 h-5 mr-3 ${activeTab === 'overall' ? 'text-white' : 'text-emerald-400'}`} />
-                        Overall Revenue
-                      </button>
+                  <button
+                    onClick={() => handleTabChange('overall')}
+                    className={`w-full flex items-center px-4 py-3 rounded-xl transition-all duration-200 ${
+                      activeTab === 'overall' ? 'bg-blue-900 text-white font-medium shadow-sm' : 'hover:bg-blue-900/50 text-blue-100'
+                    }`}
+                  >
+                    <LineChart className={`w-5 h-5 mr-3 ${activeTab === 'overall' ? 'text-white' : 'text-emerald-400'}`} />
+                    Overall Revenue
+                  </button>
 
-                      <button
-                        onClick={() => handleTabChange('customer')}
-                        className={`w-full flex items-center px-4 py-3 rounded-xl transition-all duration-200 ${
-                          activeTab === 'customer' ? 'bg-blue-900 text-white font-medium shadow-sm' : 'hover:bg-blue-900/50 text-blue-100'
-                        }`}
-                      >
-                        <Users className={`w-5 h-5 mr-3 ${activeTab === 'customer' ? 'text-white' : 'text-purple-400'}`} />
-                        Customer Analysis
-                      </button>
+                  <button
+                    onClick={() => handleTabChange('customer')}
+                    className={`w-full flex items-center px-4 py-3 rounded-xl transition-all duration-200 ${
+                      activeTab === 'customer' ? 'bg-blue-900 text-white font-medium shadow-sm' : 'hover:bg-blue-900/50 text-blue-100'
+                    }`}
+                  >
+                    <Users className={`w-5 h-5 mr-3 ${activeTab === 'customer' ? 'text-white' : 'text-purple-400'}`} />
+                    Customer Analysis
+                  </button>
 
-                      <button
-                        onClick={() => handleTabChange('product')}
-                        className={`w-full flex items-center px-4 py-3 rounded-xl transition-all duration-200 ${
-                          activeTab === 'product' ? 'bg-blue-900 text-white font-medium shadow-sm' : 'hover:bg-blue-900/50 text-blue-100'
-                        }`}
-                      >
-                        <Package className={`w-5 h-5 mr-3 ${activeTab === 'product' ? 'text-white' : 'text-amber-400'}`} />
-                        Product Analysis
-                      </button>
+                  <button
+                    onClick={() => handleTabChange('product')}
+                    className={`w-full flex items-center px-4 py-3 rounded-xl transition-all duration-200 ${
+                      activeTab === 'product' ? 'bg-blue-900 text-white font-medium shadow-sm' : 'hover:bg-blue-900/50 text-blue-100'
+                    }`}
+                  >
+                    <Package className={`w-5 h-5 mr-3 ${activeTab === 'product' ? 'text-white' : 'text-amber-400'}`} />
+                    Product Analysis
+                  </button>
 
-                      <button
-                        onClick={() => handleTabChange('business')}
-                        className={`w-full flex items-center px-4 py-3 rounded-xl transition-all duration-200 ${
-                          activeTab === 'business' ? 'bg-blue-900 text-white font-medium shadow-sm' : 'hover:bg-blue-900/50 text-blue-100'
-                        }`}
-                      >
-                        <Building2 className={`w-5 h-5 mr-3 ${activeTab === 'business' ? 'text-white' : 'text-blue-400'}`} />
-                        Business Customers
-                      </button>
-                      
-                      <button
-                        onClick={() => handleTabChange('settings')}
-                        className={`w-full flex items-center px-4 py-3 rounded-xl transition-all duration-200 ${
-                          activeTab === 'settings' ? 'bg-blue-900 text-white font-medium shadow-sm' : 'hover:bg-blue-900/50 text-blue-100'
-                        }`}
-                      >
-                        <Settings className={`w-5 h-5 mr-3 ${activeTab === 'settings' ? 'text-white' : 'text-rose-400'}`} />
-                        Settings
-                      </button>
-                    </>
-                  )}
+                  <button
+                    onClick={() => handleTabChange('business')}
+                    className={`w-full flex items-center px-4 py-3 rounded-xl transition-all duration-200 ${
+                      activeTab === 'business' ? 'bg-blue-900 text-white font-medium shadow-sm' : 'hover:bg-blue-900/50 text-blue-100'
+                    }`}
+                  >
+                    <Building2 className={`w-5 h-5 mr-3 ${activeTab === 'business' ? 'text-white' : 'text-blue-400'}`} />
+                    Business Customers
+                  </button>
+                  
+                  <button
+                    onClick={() => handleTabChange('settings')}
+                    className={`w-full flex items-center px-4 py-3 rounded-xl transition-all duration-200 ${
+                      activeTab === 'settings' ? 'bg-blue-900 text-white font-medium shadow-sm' : 'hover:bg-blue-900/50 text-blue-100'
+                    }`}
+                  >
+                    <Settings className={`w-5 h-5 mr-3 ${activeTab === 'settings' ? 'text-white' : 'text-rose-400'}`} />
+                    Settings
+                  </button>
 
                   {/* Spacer to push logout to bottom */}
                   <div className="flex-1"></div>
@@ -711,11 +705,10 @@
                         setPendingFile={setPendingFile}
                         savePendingFile={savePendingFile}
                         isCloudSyncing={isCloudSyncing}
-                        isUploadOnlyUser={isUploadOnlyUser}
                       />
                     )}
                     
-                    {!isUploadOnlyUser && activeTab === 'overall' && (
+                    {activeTab === 'overall' && (
                       <OverallSection 
                         data={standardData} 
                         currencyPrefix={currencyPrefix}
@@ -727,7 +720,7 @@
                       />
                     )}
 
-                    {!isUploadOnlyUser && activeTab === 'customer' && (
+                    {activeTab === 'customer' && (
                       <CustomerSection 
                         data={standardData} 
                         currencyPrefix={currencyPrefix}
@@ -739,7 +732,7 @@
                       />
                     )}
 
-                    {!isUploadOnlyUser && activeTab === 'product' && (
+                    {activeTab === 'product' && (
                       <ProductSection 
                         data={standardData} 
                         currencyPrefix={currencyPrefix}
@@ -751,7 +744,7 @@
                       />
                     )}
 
-                    {!isUploadOnlyUser && activeTab === 'business' && (
+                    {activeTab === 'business' && (
                       <BusinessSection 
                         data={b2bData} 
                         currencyPrefix={currencyPrefix}
@@ -759,7 +752,7 @@
                       />
                     )}
 
-                    {!isUploadOnlyUser && activeTab === 'settings' && (
+                    {activeTab === 'settings' && (
                       <SettingsSection 
                         currencyPrefix={currencyPrefix} 
                         setCurrencyPrefix={handleSetCurrencyPrefix} 
@@ -778,7 +771,7 @@
 
         // --- SUB-COMPONENTS ---
 
-        function UploadSection({ handleFileUpload, error, files, activeFileId, deleteFile, selectFile, pendingFile, setPendingFile, savePendingFile, isCloudSyncing, isUploadOnlyUser }) {
+        function UploadSection({ handleFileUpload, error, files, activeFileId, deleteFile, selectFile, pendingFile, setPendingFile, savePendingFile, isCloudSyncing }) {
           const fileInputRef = useRef(null);
           const [selectedMonth, setSelectedMonth] = useState('January');
           const [selectedYear, setSelectedYear] = useState(new Date().getFullYear().toString());
@@ -1032,8 +1025,8 @@
                                   : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
                               }`}
                             >
-                              {activeFileId === file.id ? 'Active' : (isUploadOnlyUser ? 'Select' : 'Analyze')}
-                              {activeFileId !== file.id && !isUploadOnlyUser && <ChevronRight className="w-4 h-4 ml-1 -mr-1" />}
+                              {activeFileId === file.id ? 'Active' : 'Analyze'}
+                              {activeFileId !== file.id && <ChevronRight className="w-4 h-4 ml-1 -mr-1" />}
                             </button>
                           </div>
                         </div>
