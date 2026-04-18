@@ -54,7 +54,7 @@
           PieChart as PieChartIcon, DollarSign, Package, Activity,
           AlertCircle, Trash2, ChevronRight, Users, LineChart, Briefcase,
           Target, Calendar, Filter, TrendingDown, Menu, X, Building2,
-          Search, ChevronDown, UserX, Archive, Cloud, LogOut
+          Search, ChevronDown, UserX, Archive, Cloud, LogOut, Download
         } from 'lucide-react';
 
         // --- FIREBASE INITIALIZATION ---
@@ -231,11 +231,17 @@
           const [authError, setAuthError] = useState('');
           const [isCloudSyncing, setIsCloudSyncing] = useState(true);
 
+          const isUploadOnlyUser = user?.email === 'gurunaturalsagro@gmail.com';
+
           // Business States
           const [businessCustomers, setBusinessCustomers] = useState([]);
           const [includeB2B, setIncludeB2B] = useState(false);
           const [businessProducts, setBusinessProducts] = useState([]);
           const [includeB2BProducts, setIncludeB2BProducts] = useState(false);
+
+          // Hidden Data States
+          const [hiddenCustomers, setHiddenCustomers] = useState([]);
+          const [showHiddenCustomers, setShowHiddenCustomers] = useState(false);
 
           // --- FIREBASE AUTH & SYNC ---
           useEffect(() => {
@@ -284,8 +290,10 @@
             const unsubSettings = onSnapshot(settingsRef, (docSnap) => {
               if (docSnap.exists()) {
                  const data = docSnap.data();
-                 if (data.businessCustomers) setBusinessCustomers(data.businessCustomers);
-                 if (data.businessProducts) setBusinessProducts(data.businessProducts);
+                 // ADDED ARRAYS CHECKS TO PREVENT .some() CRASHES
+                 if (Array.isArray(data.businessCustomers)) setBusinessCustomers(data.businessCustomers);
+                 if (Array.isArray(data.businessProducts)) setBusinessProducts(data.businessProducts);
+                 if (Array.isArray(data.hiddenCustomers)) setHiddenCustomers(data.hiddenCustomers);
                  if (data.currencyPrefix) setCurrencyPrefix(data.currencyPrefix);
               }
             }, (err) => console.error("Settings listener error:", err));
@@ -296,14 +304,15 @@
               const loadedFiles = [];
               snap.forEach(d => {
                  const data = d.data();
-                 // Parse the stringified JSON array
                  let fileData = data.data;
                  if (typeof fileData === 'string') {
                      try { fileData = JSON.parse(fileData); } catch (e) { fileData = []; }
                  }
+                 // CRITICAL FIX: Ensure fileData is always an array
+                 if (!Array.isArray(fileData)) fileData = []; 
+                 
                  loadedFiles.push({ ...data, data: fileData });
               });
-              // Sort newest first
               setFiles(loadedFiles.sort((a,b) => parseInt(b.id) - parseInt(a.id)));
               setIsCloudSyncing(false);
             }, (err) => {
@@ -339,6 +348,11 @@
               updateCloudSettings({ currencyPrefix: prefix });
           };
 
+          const handleSetHiddenCustomers = (newList) => {
+              setHiddenCustomers(newList);
+              updateCloudSettings({ hiddenCustomers: newList });
+          };
+
           // --- DATA PROCESSING ---
           const activeFile = files.find(f => f.id === activeFileId);
           const csvData = activeFile ? activeFile.data : [];
@@ -348,16 +362,30 @@
             const standard = [];
             const b2b = [];
 
-            allFilesData.forEach(row => {
+            // CRITICAL FIX: Ensure allFilesData ignores non-arrays
+            const safeFilesData = Array.isArray(allFilesData) ? allFilesData : [];
+
+            safeFilesData.forEach(row => {
+              // CRITICAL FIX: Skip if row is undefined/null
+              if (!row || typeof row !== 'object') return; 
+
               const custInfo = extractCustomerInfo(row);
               const pName = String(findCol(row, ['PRODUCTNAME', 'PRODUCT']) || 'Unknown Product').trim();
               
-              const isB2BCustomer = businessCustomers.some(bc => 
-                  bc.toLowerCase() === custInfo.name.toLowerCase() || 
-                  bc.toLowerCase() === custInfo.id.toLowerCase()
+              // CRITICAL FIX: Force String() comparison to prevent crashes
+              const isHidden = hiddenCustomers.some(hc => 
+                  String(hc).toLowerCase() === custInfo.name.toLowerCase() || 
+                  String(hc).toLowerCase() === custInfo.id.toLowerCase()
               );
               
-              const isB2BProduct = businessProducts.some(bp => bp.toLowerCase() === pName.toLowerCase());
+              if (isHidden && !showHiddenCustomers) return; 
+              
+              const isB2BCustomer = businessCustomers.some(bc => 
+                  String(bc).toLowerCase() === custInfo.name.toLowerCase() || 
+                  String(bc).toLowerCase() === custInfo.id.toLowerCase()
+              );
+              
+              const isB2BProduct = businessProducts.some(bp => String(bp).toLowerCase() === pName.toLowerCase());
               
               if (isB2BProduct && !includeB2BProducts) return;
               
@@ -370,7 +398,7 @@
             });
 
             return { standardData: standard, b2bData: b2b };
-          }, [allFilesData, businessCustomers, includeB2B, businessProducts, includeB2BProducts]);
+          }, [allFilesData, businessCustomers, includeB2B, businessProducts, includeB2BProducts, hiddenCustomers, showHiddenCustomers]);
 
           const handleFileUpload = (e) => {
             const file = e.target.files[0];
@@ -405,7 +433,7 @@
                 
                 if (autoB2b.size > 0) {
                   setBusinessCustomers(prev => {
-                     const current = new Set(prev.map(c => c.toLowerCase()));
+                     const current = new Set(prev.map(c => String(c).toLowerCase()));
                      const combined = [...prev];
                      autoB2b.forEach(cName => {
                         if (!current.has(cName.toLowerCase())) combined.push(cName);
@@ -442,7 +470,14 @@
               originalName: pendingFile.originalName,
               headers: pendingFile.headers,
               data: pendingFile.data,
-              date: new Date().toLocaleDateString()
+              date: new Date().toLocaleString('en-US', { 
+                  year: 'numeric', 
+                  month: 'short', 
+                  day: 'numeric', 
+                  hour: '2-digit', 
+                  minute: '2-digit', 
+                  hour12: true 
+              })
             };
             
             // Optimistic UI Update
@@ -479,7 +514,7 @@
 
           const selectFile = (id) => {
             setActiveFileId(id);
-            setActiveTab('overall'); 
+            if (!isUploadOnlyUser) setActiveTab('overall'); 
             setIsSidebarOpen(false);
           };
 
@@ -574,55 +609,59 @@
                     Upload CSV
                   </button>
                   
-                  <button
-                    onClick={() => handleTabChange('overall')}
-                    className={`w-full flex items-center px-4 py-3 rounded-xl transition-all duration-200 ${
-                      activeTab === 'overall' ? 'bg-blue-900 text-white font-medium shadow-sm' : 'hover:bg-blue-900/50 text-blue-100'
-                    }`}
-                  >
-                    <LineChart className={`w-5 h-5 mr-3 ${activeTab === 'overall' ? 'text-white' : 'text-emerald-400'}`} />
-                    Overall Revenue
-                  </button>
+                  {!isUploadOnlyUser && (
+                    <>
+                      <button
+                        onClick={() => handleTabChange('overall')}
+                        className={`w-full flex items-center px-4 py-3 rounded-xl transition-all duration-200 ${
+                          activeTab === 'overall' ? 'bg-blue-900 text-white font-medium shadow-sm' : 'hover:bg-blue-900/50 text-blue-100'
+                        }`}
+                      >
+                        <LineChart className={`w-5 h-5 mr-3 ${activeTab === 'overall' ? 'text-white' : 'text-emerald-400'}`} />
+                        Overall Revenue
+                      </button>
 
-                  <button
-                    onClick={() => handleTabChange('customer')}
-                    className={`w-full flex items-center px-4 py-3 rounded-xl transition-all duration-200 ${
-                      activeTab === 'customer' ? 'bg-blue-900 text-white font-medium shadow-sm' : 'hover:bg-blue-900/50 text-blue-100'
-                    }`}
-                  >
-                    <Users className={`w-5 h-5 mr-3 ${activeTab === 'customer' ? 'text-white' : 'text-purple-400'}`} />
-                    Customer Analysis
-                  </button>
+                      <button
+                        onClick={() => handleTabChange('customer')}
+                        className={`w-full flex items-center px-4 py-3 rounded-xl transition-all duration-200 ${
+                          activeTab === 'customer' ? 'bg-blue-900 text-white font-medium shadow-sm' : 'hover:bg-blue-900/50 text-blue-100'
+                        }`}
+                      >
+                        <Users className={`w-5 h-5 mr-3 ${activeTab === 'customer' ? 'text-white' : 'text-purple-400'}`} />
+                        Customer Analysis
+                      </button>
 
-                  <button
-                    onClick={() => handleTabChange('product')}
-                    className={`w-full flex items-center px-4 py-3 rounded-xl transition-all duration-200 ${
-                      activeTab === 'product' ? 'bg-blue-900 text-white font-medium shadow-sm' : 'hover:bg-blue-900/50 text-blue-100'
-                    }`}
-                  >
-                    <Package className={`w-5 h-5 mr-3 ${activeTab === 'product' ? 'text-white' : 'text-amber-400'}`} />
-                    Product Analysis
-                  </button>
+                      <button
+                        onClick={() => handleTabChange('product')}
+                        className={`w-full flex items-center px-4 py-3 rounded-xl transition-all duration-200 ${
+                          activeTab === 'product' ? 'bg-blue-900 text-white font-medium shadow-sm' : 'hover:bg-blue-900/50 text-blue-100'
+                        }`}
+                      >
+                        <Package className={`w-5 h-5 mr-3 ${activeTab === 'product' ? 'text-white' : 'text-amber-400'}`} />
+                        Product Analysis
+                      </button>
 
-                  <button
-                    onClick={() => handleTabChange('business')}
-                    className={`w-full flex items-center px-4 py-3 rounded-xl transition-all duration-200 ${
-                      activeTab === 'business' ? 'bg-blue-900 text-white font-medium shadow-sm' : 'hover:bg-blue-900/50 text-blue-100'
-                    }`}
-                  >
-                    <Building2 className={`w-5 h-5 mr-3 ${activeTab === 'business' ? 'text-white' : 'text-blue-400'}`} />
-                    Business Customers
-                  </button>
-                  
-                  <button
-                    onClick={() => handleTabChange('settings')}
-                    className={`w-full flex items-center px-4 py-3 rounded-xl transition-all duration-200 ${
-                      activeTab === 'settings' ? 'bg-blue-900 text-white font-medium shadow-sm' : 'hover:bg-blue-900/50 text-blue-100'
-                    }`}
-                  >
-                    <Settings className={`w-5 h-5 mr-3 ${activeTab === 'settings' ? 'text-white' : 'text-rose-400'}`} />
-                    Settings
-                  </button>
+                      <button
+                        onClick={() => handleTabChange('business')}
+                        className={`w-full flex items-center px-4 py-3 rounded-xl transition-all duration-200 ${
+                          activeTab === 'business' ? 'bg-blue-900 text-white font-medium shadow-sm' : 'hover:bg-blue-900/50 text-blue-100'
+                        }`}
+                      >
+                        <Building2 className={`w-5 h-5 mr-3 ${activeTab === 'business' ? 'text-white' : 'text-blue-400'}`} />
+                        Business Customers
+                      </button>
+                      
+                      <button
+                        onClick={() => handleTabChange('settings')}
+                        className={`w-full flex items-center px-4 py-3 rounded-xl transition-all duration-200 ${
+                          activeTab === 'settings' ? 'bg-blue-900 text-white font-medium shadow-sm' : 'hover:bg-blue-900/50 text-blue-100'
+                        }`}
+                      >
+                        <Settings className={`w-5 h-5 mr-3 ${activeTab === 'settings' ? 'text-white' : 'text-rose-400'}`} />
+                        Settings
+                      </button>
+                    </>
+                  )}
 
                   {/* Spacer to push logout to bottom */}
                   <div className="flex-1"></div>
@@ -698,10 +737,11 @@
                         setPendingFile={setPendingFile}
                         savePendingFile={savePendingFile}
                         isCloudSyncing={isCloudSyncing}
+                        isUploadOnlyUser={isUploadOnlyUser}
                       />
                     )}
                     
-                    {activeTab === 'overall' && (
+                    {!isUploadOnlyUser && activeTab === 'overall' && (
                       <OverallSection 
                         data={standardData} 
                         currencyPrefix={currencyPrefix}
@@ -713,7 +753,7 @@
                       />
                     )}
 
-                    {activeTab === 'customer' && (
+                    {!isUploadOnlyUser && activeTab === 'customer' && (
                       <CustomerSection 
                         data={standardData} 
                         currencyPrefix={currencyPrefix}
@@ -725,7 +765,7 @@
                       />
                     )}
 
-                    {activeTab === 'product' && (
+                    {!isUploadOnlyUser && activeTab === 'product' && (
                       <ProductSection 
                         data={standardData} 
                         currencyPrefix={currencyPrefix}
@@ -737,7 +777,7 @@
                       />
                     )}
 
-                    {activeTab === 'business' && (
+                    {!isUploadOnlyUser && activeTab === 'business' && (
                       <BusinessSection 
                         data={b2bData} 
                         currencyPrefix={currencyPrefix}
@@ -745,7 +785,7 @@
                       />
                     )}
 
-                    {activeTab === 'settings' && (
+                    {!isUploadOnlyUser && activeTab === 'settings' && (
                       <SettingsSection 
                         currencyPrefix={currencyPrefix} 
                         setCurrencyPrefix={handleSetCurrencyPrefix} 
@@ -753,6 +793,11 @@
                         setBusinessCustomers={handleSetBusinessCustomers}
                         businessProducts={businessProducts}
                         setBusinessProducts={handleSetBusinessProducts}
+                        hiddenCustomers={hiddenCustomers}
+                        setHiddenCustomers={handleSetHiddenCustomers}
+                        showHiddenCustomers={showHiddenCustomers}
+                        setShowHiddenCustomers={setShowHiddenCustomers}
+                        allFilesData={allFilesData}
                       />
                     )}
                   </div>
@@ -764,7 +809,7 @@
 
         // --- SUB-COMPONENTS ---
 
-        function UploadSection({ handleFileUpload, error, files, activeFileId, deleteFile, selectFile, pendingFile, setPendingFile, savePendingFile, isCloudSyncing }) {
+        function UploadSection({ handleFileUpload, error, files, activeFileId, deleteFile, selectFile, pendingFile, setPendingFile, savePendingFile, isCloudSyncing, isUploadOnlyUser }) {
           const fileInputRef = useRef(null);
           const [selectedMonth, setSelectedMonth] = useState('January');
           const [selectedYear, setSelectedYear] = useState(new Date().getFullYear().toString());
@@ -773,7 +818,7 @@
           const [filterYear, setFilterYear] = useState('all');
 
           const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-          const years = Array.from({length: 11}, (_, i) => (new Date().getFullYear() - 5 + i).toString());
+          const years = Array.from({length: 100}, (_, i) => (new Date().getFullYear() - 5 + i).toString());
 
           const filteredFiles = files.filter(file => {
             const monthMatch = filterMonth === 'all' || file.name.includes(filterMonth);
@@ -781,18 +826,57 @@
             return monthMatch && yearMatch;
           });
 
+          const handleDownload = (file) => {
+            if (!file || !file.data || file.data.length === 0) return;
+            const headers = file.headers || Object.keys(file.data[0]);
+            
+            let csvContent = headers.map(h => `"${String(h).replace(/"/g, '""')}"`).join(',') + '\n';
+            
+            file.data.forEach(row => {
+                const rowContent = headers.map(header => {
+                    let cell = row[header] === null || row[header] === undefined ? '' : String(row[header]);
+                    cell = cell.replace(/"/g, '""');
+                    if (cell.search(/("|,|\n)/g) >= 0) {
+                        cell = `"${cell}"`;
+                    }
+                    return cell;
+                }).join(',');
+                csvContent += rowContent + '\n';
+            });
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            const url = URL.createObjectURL(blob);
+            link.setAttribute("href", url);
+            link.setAttribute("download", file.originalName || `${file.name.replace(/\s+/g, '_')}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+          };
+
           return (
             <div className="h-full flex flex-col space-y-6 animate-in fade-in duration-500 max-w-4xl mx-auto pb-8">
               
               {/* TOP: Smaller Upload Area */}
               <div className="bg-white rounded-3xl shadow-sm border border-slate-200 p-5 sm:p-6 md:p-8">
-                <div className="flex items-center justify-between mb-6">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
                   <div>
                     <h2 className="text-xl font-bold text-slate-800">Upload CSV File</h2>
                     <p className="text-sm text-slate-500 mt-1">Files automatically sync to your connected cloud dashboard.</p>
                   </div>
-                  <div className="w-12 h-12 bg-indigo-50 text-indigo-500 rounded-full flex items-center justify-center flex-shrink-0 ml-4">
-                    <UploadCloud className="w-6 h-6" />
+                  <div className="flex items-center gap-3 sm:gap-4 self-start sm:self-auto">
+                    <a 
+                      href="https://gurucsvfilecleaner.netlify.app/"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center justify-center px-4 py-2 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 hover:text-emerald-700 border border-emerald-200 rounded-xl font-semibold text-sm transition-colors shadow-sm whitespace-nowrap"
+                    >
+                      <Settings className="w-4 h-4 mr-2" />
+                      Data Cleaner
+                    </a>
+                    <div className="w-12 h-12 bg-indigo-50 text-indigo-500 rounded-full hidden sm:flex items-center justify-center flex-shrink-0">
+                      <UploadCloud className="w-6 h-6" />
+                    </div>
                   </div>
                 </div>
 
@@ -958,6 +1042,13 @@
                           
                           <div className="flex items-center gap-2 self-end sm:self-auto w-full sm:w-auto justify-end mt-2 sm:mt-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100">
                             <button 
+                              onClick={() => handleDownload(file)}
+                              className="p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
+                              title="Download file"
+                            >
+                              <Download className="w-5 h-5 sm:w-4 sm:h-4" />
+                            </button>
+                            <button 
                               onClick={() => deleteFile(file.id)}
                               className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-colors"
                               title="Delete file"
@@ -972,8 +1063,8 @@
                                   : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
                               }`}
                             >
-                              {activeFileId === file.id ? 'Active' : 'Analyze'}
-                              {activeFileId !== file.id && <ChevronRight className="w-4 h-4 ml-1 -mr-1" />}
+                              {activeFileId === file.id ? 'Active' : (isUploadOnlyUser ? 'Select' : 'Analyze')}
+                              {activeFileId !== file.id && !isUploadOnlyUser && <ChevronRight className="w-4 h-4 ml-1 -mr-1" />}
                             </button>
                           </div>
                         </div>
@@ -1056,7 +1147,7 @@
           const [endDate, setEndDate] = useState('');
 
           const monthsList = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-          const yearsList = Array.from({length: 11}, (_, i) => (new Date().getFullYear() - 5 + i).toString());
+          const yearsList = Array.from({length: 100}, (_, i) => (new Date().getFullYear() - 5 + i).toString());
 
           const getHeadline = () => {
             if (filterType === 'current') return `${monthsList[new Date().getMonth()].toUpperCase()} ${new Date().getFullYear()}`;
@@ -1555,7 +1646,7 @@
           const dropdownRef = useRef(null);
 
           const monthsList = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-          const yearsList = Array.from({length: 11}, (_, i) => (new Date().getFullYear() - 5 + i).toString());
+          const yearsList = Array.from({length: 100}, (_, i) => (new Date().getFullYear() - 5 + i).toString());
 
           React.useEffect(() => {
             const handleClickOutside = (event) => {
@@ -2281,7 +2372,7 @@
           const dropdownRef = useRef(null);
 
           const monthsList = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-          const yearsList = Array.from({length: 11}, (_, i) => (new Date().getFullYear() - 5 + i).toString());
+          const yearsList = Array.from({length: 100}, (_, i) => (new Date().getFullYear() - 5 + i).toString());
 
           React.useEffect(() => {
             const handleClickOutside = (event) => {
@@ -2992,7 +3083,7 @@
           const [endDate, setEndDate] = useState('');
 
           const monthsList = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-          const yearsList = Array.from({length: 11}, (_, i) => (new Date().getFullYear() - 5 + i).toString());
+          const yearsList = Array.from({length: 100}, (_, i) => (new Date().getFullYear() - 5 + i).toString());
 
           const getHeadline = () => {
             if (filterType === 'current') return `${monthsList[new Date().getMonth()].toUpperCase()} ${new Date().getFullYear()}`;
@@ -3229,15 +3320,59 @@
           );
         }
 
-        function SettingsSection({ currencyPrefix, setCurrencyPrefix, businessCustomers, setBusinessCustomers, businessProducts, setBusinessProducts }) {
+        function SettingsSection({ currencyPrefix, setCurrencyPrefix, businessCustomers, setBusinessCustomers, businessProducts, setBusinessProducts, hiddenCustomers, setHiddenCustomers, showHiddenCustomers, setShowHiddenCustomers, allFilesData }) {
           const [newB2B, setNewB2B] = useState('');
           const [newB2BProduct, setNewB2BProduct] = useState('');
+
+          const [hiddenSearch, setHiddenSearch] = useState('');
+          const [isHiddenDropdownOpen, setIsHiddenDropdownOpen] = useState(false);
+          const hiddenDropdownRef = useRef(null);
+
+          React.useEffect(() => {
+            const handleClickOutside = (event) => {
+              if (hiddenDropdownRef.current && !hiddenDropdownRef.current.contains(event.target)) {
+                setIsHiddenDropdownOpen(false);
+              }
+            };
+            document.addEventListener('mousedown', handleClickOutside);
+            return () => document.removeEventListener('mousedown', handleClickOutside);
+          }, []);
+
+          const allKnownCustomerNames = useMemo(() => {
+              if (!allFilesData) return [];
+              const safeFilesData = Array.isArray(allFilesData) ? allFilesData : [];
+              const namesMap = new Map();
+              safeFilesData.forEach(row => {
+                  if (!row || typeof row !== 'object') return;
+                  const custInfo = extractCustomerInfo(row);
+                  if (!namesMap.has(custInfo.id)) namesMap.set(custInfo.id, custInfo.name);
+              });
+              return Array.from(namesMap.entries()).map(([id, name]) => ({id, name})).sort((a,b) => a.name.localeCompare(b.name));
+          }, [allFilesData]);
+
+          const filteredHiddenSearch = allKnownCustomerNames.filter(c => 
+              c.name.toLowerCase().includes(hiddenSearch.toLowerCase()) || 
+              c.id.toLowerCase().includes(hiddenSearch.toLowerCase())
+          );
+
+          const handleAddHidden = (nameOrId) => {
+              if (!nameOrId) return;
+              if (!hiddenCustomers.some(c => String(c).toLowerCase() === String(nameOrId).toLowerCase())) {
+                  setHiddenCustomers([...hiddenCustomers, nameOrId]);
+              }
+              setHiddenSearch('');
+              setIsHiddenDropdownOpen(false);
+          };
+
+          const removeHidden = (nameToRemove) => {
+              setHiddenCustomers(hiddenCustomers.filter(name => name !== nameToRemove));
+          };
 
           const handleAddB2B = (e) => {
             e.preventDefault();
             if (newB2B.trim() === '') return;
             
-            if (!businessCustomers.some(c => c.toLowerCase() === newB2B.trim().toLowerCase())) {
+            if (!businessCustomers.some(c => String(c).toLowerCase() === newB2B.trim().toLowerCase())) {
               setBusinessCustomers([...businessCustomers, newB2B.trim()]);
             }
             setNewB2B('');
@@ -3251,7 +3386,7 @@
             e.preventDefault();
             if (newB2BProduct.trim() === '') return;
             
-            if (!businessProducts.some(p => p.toLowerCase() === newB2BProduct.trim().toLowerCase())) {
+            if (!businessProducts.some(p => String(p).toLowerCase() === newB2BProduct.trim().toLowerCase())) {
               setBusinessProducts([...businessProducts, newB2BProduct.trim()]);
             }
             setNewB2BProduct('');
@@ -3308,6 +3443,117 @@
                     </div>
                   </div>
 
+                </div>
+              </div>
+
+              {/* Hidden Customers Management */}
+              <div className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-visible relative z-20">
+                <div className="p-4 sm:p-6 border-b border-slate-100 bg-rose-50/50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div>
+                    <h2 className="text-xl font-bold text-rose-900 flex items-center">
+                      <UserX className="w-5 h-5 mr-2 text-rose-600" />
+                      Hidden Customer Data
+                    </h2>
+                    <p className="text-sm text-slate-500 mt-1">Customers added here will be completely hidden from all analytics sections.</p>
+                  </div>
+                  
+                  <div className="flex items-center gap-3 bg-white px-4 py-2.5 rounded-xl border border-slate-200 shadow-sm shrink-0">
+                    <span className="text-sm font-semibold text-slate-700">Show Hidden Data</span>
+                    <button 
+                      onClick={() => setShowHiddenCustomers(!showHiddenCustomers)}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none flex-shrink-0 ${showHiddenCustomers ? 'bg-rose-600' : 'bg-slate-300'}`}
+                    >
+                      <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${showHiddenCustomers ? 'translate-x-6' : 'translate-x-1'}`} />
+                    </button>
+                  </div>
+                </div>
+                
+                <div className="p-4 sm:p-6">
+                  {showHiddenCustomers && (
+                    <div className="flex items-start text-amber-600 bg-amber-50 px-4 py-3 rounded-xl border border-amber-200 text-sm w-full mb-5">
+                      <AlertCircle className="w-5 h-5 mr-3 flex-shrink-0 mt-0.5" />
+                      <p>
+                        <strong>Warning:</strong> Hidden data is currently set to <strong>VISIBLE</strong>. These customers are actively included in your charts and overall revenue.
+                      </p>
+                    </div>
+                  )}
+
+                  <div className="relative mb-6" ref={hiddenDropdownRef}>
+                    <div className="flex flex-col gap-1">
+                      <label className="text-xs font-bold text-slate-400 uppercase tracking-wider ml-1">Search & Add Customer to Hide</label>
+                      <div className="relative">
+                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                        <input 
+                          type="text" 
+                          value={hiddenSearch}
+                          onChange={(e) => {
+                            setHiddenSearch(e.target.value);
+                            setIsHiddenDropdownOpen(true);
+                          }}
+                          onFocus={() => setIsHiddenDropdownOpen(true)}
+                          placeholder="Type name or ID to search..."
+                          className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl pl-10 pr-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500"
+                        />
+                      </div>
+                    </div>
+
+                    {isHiddenDropdownOpen && hiddenSearch.trim().length > 0 && (
+                      <div className="absolute top-full left-0 mt-2 w-full bg-white border border-slate-200 rounded-xl shadow-xl overflow-hidden flex flex-col max-h-[250px] z-50">
+                        <ul className="overflow-y-auto flex-1 p-1 custom-scrollbar">
+                          {filteredHiddenSearch.map(c => (
+                            <li 
+                              key={c.id}
+                              onClick={() => handleAddHidden(c.name)}
+                              className="px-4 py-3 hover:bg-rose-50 hover:text-rose-700 rounded-lg cursor-pointer text-sm transition-colors flex flex-col text-slate-700"
+                            >
+                              <span className="font-semibold truncate">{c.name}</span>
+                              <span className="text-[10px] text-slate-400 font-mono truncate mt-0.5">ID: {c.id}</span>
+                            </li>
+                          ))}
+                          {filteredHiddenSearch.length === 0 && (
+                            <li className="px-4 py-4 text-center text-sm text-slate-400 flex flex-col gap-2">
+                              <span>No matching customers found in the data.</span>
+                              <button 
+                                onClick={() => handleAddHidden(hiddenSearch)}
+                                className="text-rose-600 font-medium hover:underline"
+                              >
+                                Add "{hiddenSearch}" exactly anyway
+                              </button>
+                            </li>
+                          )}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Currently Hidden Customers ({hiddenCustomers.length})</h4>
+                    {hiddenCustomers.length === 0 ? (
+                      <div className="text-center py-6 border-2 border-dashed border-slate-200 rounded-xl bg-slate-50 text-sm text-slate-500 px-4">
+                        No customers are being hidden.
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {hiddenCustomers.map((customer, idx) => (
+                          <div key={idx} className="flex items-center justify-between bg-white border border-slate-200 rounded-xl p-3 shadow-sm hover:border-rose-300 transition-colors">
+                            <div className="flex items-center overflow-hidden">
+                              <div className="w-8 h-8 bg-rose-50 text-rose-600 rounded-full flex items-center justify-center mr-3 flex-shrink-0">
+                                <UserX className="w-4 h-4" />
+                              </div>
+                              <span className="font-semibold text-slate-700 text-sm truncate">{customer}</span>
+                            </div>
+                            <button 
+                              onClick={() => removeHidden(customer)}
+                              className="text-slate-400 hover:text-rose-500 hover:bg-rose-50 p-2 rounded-lg transition-colors flex-shrink-0"
+                              title="Restore customer data"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -3438,9 +3684,37 @@
           );
         }
 
+        // --- ERROR BOUNDARY ---
+        class ErrorBoundary extends React.Component {
+          constructor(props) {
+            super(props);
+            this.state = { hasError: false, errorInfo: null };
+          }
+          static getDerivedStateFromError(error) {
+            return { hasError: true, errorInfo: error };
+          }
+          render() {
+            if (this.state.hasError) {
+              return (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', backgroundColor: '#f8fafc', padding: '20px', fontFamily: 'system-ui, sans-serif' }}>
+                    <div style={{ backgroundColor: 'white', padding: '40px', borderRadius: '24px', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)', textAlign: 'center', maxWidth: '500px' }}>
+                        <h2 style={{ fontSize: '24px', fontWeight: 'bold', color: '#0f172a', marginBottom: '10px' }}>Dashboard Recovered from a Crash</h2>
+                        <p style={{ color: '#64748b', marginBottom: '20px' }}>Corrupted or missing data was detected in your files or settings.</p>
+                        <code style={{ display: 'block', backgroundColor: '#f1f5f9', padding: '15px', borderRadius: '12px', color: '#ef4444', fontSize: '12px', textAlign: 'left', overflow: 'auto', marginBottom: '20px', maxHeight: '150px' }}>
+                            {this.state.errorInfo && this.state.errorInfo.toString()}
+                        </code>
+                        <button onClick={() => window.location.reload()} style={{ backgroundColor: '#4f46e5', color: 'white', padding: '10px 24px', borderRadius: '12px', fontWeight: '600', border: 'none', cursor: 'pointer' }}>Reload Dashboard</button>
+                    </div>
+                </div>
+              );
+            }
+            return this.props.children;
+          }
+        }
+
         // --- RENDER APP TO DOM ---
         const root = createRoot(document.getElementById('root'));
-        root.render(<App />);
+        root.render(<ErrorBoundary><App /></ErrorBoundary>);
     </script>
 </body>
 </html>
