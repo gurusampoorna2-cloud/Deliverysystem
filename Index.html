@@ -109,10 +109,28 @@
         };
 
         const findCol = (row, keywords) => {
-          const key = Object.keys(row).find(k => 
-            keywords.some(kw => k.toUpperCase().replace(/[^A-Z]/g, '').includes(kw.replace(/[^A-Z]/g, '')))
-          );
-          return key !== undefined ? row[key] : null;
+          const keys = Object.keys(row);
+          
+          // 1. Exact match (case-insensitive, ignoring symbols/spaces)
+          for (let k of keys) {
+            const cleanK = k.toUpperCase().replace(/[^A-Z]/g, '');
+            if (keywords.some(kw => cleanK === kw.toUpperCase().replace(/[^A-Z]/g, ''))) {
+              return row[k];
+            }
+          }
+
+          // 2. Partial match (only for keywords longer than 2 chars to prevent 'ID' matching 'PAID' or 'ORDERID')
+          for (let k of keys) {
+            const cleanK = k.toUpperCase().replace(/[^A-Z]/g, '');
+            if (keywords.some(kw => {
+              const cleanKw = kw.toUpperCase().replace(/[^A-Z]/g, '');
+              return cleanKw.length > 2 && cleanK.includes(cleanKw);
+            })) {
+              return row[k];
+            }
+          }
+          
+          return null;
         };
 
         const cleanProductStr = (str) => {
