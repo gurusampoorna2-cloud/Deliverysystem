@@ -141,13 +141,30 @@
         };
 
         const extractCustomerInfo = (row) => {
-          let id = String(findCol(row, ['CUSTOMERID', 'CUSTID', 'ID']) || '').trim();
-          let name = String(findCol(row, ['CUSTOMERNAME', 'CUSTNAME', 'NAME', 'COMPANY']) || '').trim();
+          // Expanded column search list to catch more software variants
+          let rawId = String(findCol(row, ['CUSTOMERID', 'CUSTID', 'CUSTOMERCODE', 'PARTYCODE', 'MEMBERID', 'USERID', 'CODE', 'ID']) || '').trim();
+          let rawName = String(findCol(row, ['CUSTOMERNAME', 'CUSTNAME', 'PARTYNAME', 'LEDGERNAME', 'PARTY', 'LEDGER', 'NAME', 'COMPANY']) || '').trim();
+
+          // INTELLIGENT PARSER: Check if ID is bundled inside the Name column (e.g. "A1444 SEEMA SHRIVASTAVA")
+          if (!rawId && rawName) {
+              const parts = rawName.split(' ');
+              // If the first word contains numbers, it is highly likely an ID prefix
+              if (parts.length > 1 && /\d/.test(parts[0])) {
+                  rawId = parts[0];
+                  rawName = parts.slice(1).join(' '); // Clean the name by removing the ID prefix
+              }
+          }
+
+          let id = rawId;
+          let name = rawName;
 
           if (id.toLowerCase() === 'd1' || id.toLowerCase() === 'd11') {
             id = 'NEW_CUSTOMER';
             name = 'New Customer';
           }
+
+          // Only flag as B2B missing ID if it truly doesn't have an ID even after our split attempt
+          const isMissingId = (!rawId || rawId.toLowerCase() === 'na');
 
           if (!id || id.toLowerCase() === 'na') {
             id = name || 'Unknown Customer';
@@ -157,7 +174,7 @@
             name = id;
           }
 
-          return { id, name };
+          return { id, name, isMissingId, rawName: rawName || name };
         };
 
         const parseDateStr = (val) => {
@@ -442,10 +459,9 @@
                 // Auto-detect business customers (missing or NA id)
                 const autoB2b = new Set();
                 parsedData.forEach(row => {
-                  let id = String(findCol(row, ['CUSTOMERID', 'CUSTID', 'ID']) || '').trim();
-                  let name = String(findCol(row, ['CUSTOMERNAME', 'CUSTNAME', 'NAME', 'COMPANY']) || '').trim();
-                  if (!id || id.toLowerCase() === 'na') {
-                     if (name) autoB2b.add(name);
+                  const custInfo = extractCustomerInfo(row);
+                  if (custInfo.isMissingId && custInfo.rawName) {
+                     autoB2b.add(custInfo.rawName);
                   }
                 });
                 
