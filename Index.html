@@ -109,28 +109,10 @@
         };
 
         const findCol = (row, keywords) => {
-          const keys = Object.keys(row);
-          
-          // 1. Exact match (case-insensitive, ignoring symbols/spaces)
-          for (let k of keys) {
-            const cleanK = k.toUpperCase().replace(/[^A-Z]/g, '');
-            if (keywords.some(kw => cleanK === kw.toUpperCase().replace(/[^A-Z]/g, ''))) {
-              return row[k];
-            }
-          }
-
-          // 2. Partial match (only for keywords longer than 2 chars to prevent 'ID' matching 'PAID' or 'ORDERID')
-          for (let k of keys) {
-            const cleanK = k.toUpperCase().replace(/[^A-Z]/g, '');
-            if (keywords.some(kw => {
-              const cleanKw = kw.toUpperCase().replace(/[^A-Z]/g, '');
-              return cleanKw.length > 2 && cleanK.includes(cleanKw);
-            })) {
-              return row[k];
-            }
-          }
-          
-          return null;
+          const key = Object.keys(row).find(k => 
+            keywords.some(kw => k.toUpperCase().replace(/[^A-Z]/g, '').includes(kw.replace(/[^A-Z]/g, '')))
+          );
+          return key !== undefined ? row[key] : null;
         };
 
         const cleanProductStr = (str) => {
@@ -141,40 +123,13 @@
         };
 
         const extractCustomerInfo = (row) => {
-          // Expanded column search list to catch more software variants
-          let rawId = String(findCol(row, ['CUSTOMERID', 'CUSTID', 'CUSTOMERCODE', 'PARTYCODE', 'MEMBERID', 'USERID', 'CODE', 'ID']) || '').trim();
-          let rawName = String(findCol(row, ['CUSTOMERNAME', 'CUSTNAME', 'PARTYNAME', 'LEDGERNAME', 'PARTY', 'LEDGER', 'NAME', 'COMPANY']) || '').trim();
+          let id = String(findCol(row, ['CUSTOMER ID', 'CUSTOMERID', 'CUSTID', 'ID']) || '').trim();
+          let name = String(findCol(row, ['CUSTOMER NAME', 'CUSTMER NAME', 'CUSTOMERNAME', 'CUSTNAME', 'NAME']) || '').trim();
 
-          // INTELLIGENT PARSER: Check if ID is bundled inside the Name column (e.g. "A1444 SEEMA SHRIVASTAVA")
-          if (!rawId && rawName) {
-              const parts = rawName.split(' ');
-              // If the first word contains numbers, it is highly likely an ID prefix
-              if (parts.length > 1 && /\d/.test(parts[0])) {
-                  rawId = parts[0];
-                  rawName = parts.slice(1).join(' '); // Clean the name by removing the ID prefix
-              }
-          }
+          if (!id) id = 'Unknown ID';
+          if (!name) name = 'Unknown Customer';
 
-          let id = rawId;
-          let name = rawName;
-
-          if (id.toLowerCase() === 'd1' || id.toLowerCase() === 'd11') {
-            id = 'NEW_CUSTOMER';
-            name = 'New Customer';
-          }
-
-          // Only flag as B2B missing ID if it truly doesn't have an ID even after our split attempt
-          const isMissingId = (!rawId || rawId.toLowerCase() === 'na');
-
-          if (!id || id.toLowerCase() === 'na') {
-            id = name || 'Unknown Customer';
-          }
-          
-          if (!name) {
-            name = id;
-          }
-
-          return { id, name, isMissingId, rawName: rawName || name };
+          return { id, name };
         };
 
         const parseDateStr = (val) => {
@@ -325,11 +280,10 @@
             const unsubSettings = onSnapshot(settingsRef, (docSnap) => {
               if (docSnap.exists()) {
                  const data = docSnap.data();
-                 // ADDED ARRAYS CHECKS TO PREVENT .some() CRASHES
-                 if (Array.isArray(data.businessCustomers)) setBusinessCustomers(data.businessCustomers);
-                 if (Array.isArray(data.businessProducts)) setBusinessProducts(data.businessProducts);
-                 if (Array.isArray(data.hiddenCustomers)) setHiddenCustomers(data.hiddenCustomers);
+                 if (data.businessCustomers) setBusinessCustomers(data.businessCustomers);
+                 if (data.businessProducts) setBusinessProducts(data.businessProducts);
                  if (data.currencyPrefix) setCurrencyPrefix(data.currencyPrefix);
+                 if (data.hiddenCustomers) setHiddenCustomers(data.hiddenCustomers);
               }
             }, (err) => console.error("Settings listener error:", err));
 
@@ -339,15 +293,14 @@
               const loadedFiles = [];
               snap.forEach(d => {
                  const data = d.data();
+                 // Parse the stringified JSON array
                  let fileData = data.data;
                  if (typeof fileData === 'string') {
                      try { fileData = JSON.parse(fileData); } catch (e) { fileData = []; }
                  }
-                 // CRITICAL FIX: Ensure fileData is always an array
-                 if (!Array.isArray(fileData)) fileData = []; 
-                 
                  loadedFiles.push({ ...data, data: fileData });
               });
+              // Sort newest first
               setFiles(loadedFiles.sort((a,b) => parseInt(b.id) - parseInt(a.id)));
               setIsCloudSyncing(false);
             }, (err) => {
@@ -397,30 +350,24 @@
             const standard = [];
             const b2b = [];
 
-            // CRITICAL FIX: Ensure allFilesData ignores non-arrays
-            const safeFilesData = Array.isArray(allFilesData) ? allFilesData : [];
-
-            safeFilesData.forEach(row => {
-              // CRITICAL FIX: Skip if row is undefined/null
-              if (!row || typeof row !== 'object') return; 
-
+            allFilesData.forEach(row => {
               const custInfo = extractCustomerInfo(row);
               const pName = String(findCol(row, ['PRODUCTNAME', 'PRODUCT']) || 'Unknown Product').trim();
               
-              // CRITICAL FIX: Force String() comparison to prevent crashes
+              // --- HIDDEN CUSTOMERS LOGIC ---
               const isHidden = hiddenCustomers.some(hc => 
-                  String(hc).toLowerCase() === custInfo.name.toLowerCase() || 
-                  String(hc).toLowerCase() === custInfo.id.toLowerCase()
+                  hc.toLowerCase() === custInfo.name.toLowerCase() || 
+                  hc.toLowerCase() === custInfo.id.toLowerCase()
               );
               
-              if (isHidden && !showHiddenCustomers) return; 
+              if (isHidden && !showHiddenCustomers) return; // Skip this row entirely
               
               const isB2BCustomer = businessCustomers.some(bc => 
-                  String(bc).toLowerCase() === custInfo.name.toLowerCase() || 
-                  String(bc).toLowerCase() === custInfo.id.toLowerCase()
+                  bc.toLowerCase() === custInfo.name.toLowerCase() || 
+                  bc.toLowerCase() === custInfo.id.toLowerCase()
               );
               
-              const isB2BProduct = businessProducts.some(bp => String(bp).toLowerCase() === pName.toLowerCase());
+              const isB2BProduct = businessProducts.some(bp => bp.toLowerCase() === pName.toLowerCase());
               
               if (isB2BProduct && !includeB2BProducts) return;
               
@@ -454,27 +401,6 @@
                 if (parsedData.length === 0) {
                   setError('The uploaded CSV file is empty.');
                   return;
-                }
-
-                // Auto-detect business customers (missing or NA id)
-                const autoB2b = new Set();
-                parsedData.forEach(row => {
-                  const custInfo = extractCustomerInfo(row);
-                  if (custInfo.isMissingId && custInfo.rawName) {
-                     autoB2b.add(custInfo.rawName);
-                  }
-                });
-                
-                if (autoB2b.size > 0) {
-                  setBusinessCustomers(prev => {
-                     const current = new Set(prev.map(c => String(c).toLowerCase()));
-                     const combined = [...prev];
-                     autoB2b.forEach(cName => {
-                        if (!current.has(cName.toLowerCase())) combined.push(cName);
-                     });
-                     if (user) updateCloudSettings({ businessCustomers: combined });
-                     return combined;
-                  });
                 }
 
                 setPendingFile({
@@ -3374,10 +3300,8 @@
 
           const allKnownCustomerNames = useMemo(() => {
               if (!allFilesData) return [];
-              const safeFilesData = Array.isArray(allFilesData) ? allFilesData : [];
               const namesMap = new Map();
-              safeFilesData.forEach(row => {
-                  if (!row || typeof row !== 'object') return;
+              allFilesData.forEach(row => {
                   const custInfo = extractCustomerInfo(row);
                   if (!namesMap.has(custInfo.id)) namesMap.set(custInfo.id, custInfo.name);
               });
@@ -3391,7 +3315,7 @@
 
           const handleAddHidden = (nameOrId) => {
               if (!nameOrId) return;
-              if (!hiddenCustomers.some(c => String(c).toLowerCase() === String(nameOrId).toLowerCase())) {
+              if (!hiddenCustomers.some(c => c.toLowerCase() === nameOrId.toLowerCase())) {
                   setHiddenCustomers([...hiddenCustomers, nameOrId]);
               }
               setHiddenSearch('');
@@ -3406,7 +3330,7 @@
             e.preventDefault();
             if (newB2B.trim() === '') return;
             
-            if (!businessCustomers.some(c => String(c).toLowerCase() === newB2B.trim().toLowerCase())) {
+            if (!businessCustomers.some(c => c.toLowerCase() === newB2B.trim().toLowerCase())) {
               setBusinessCustomers([...businessCustomers, newB2B.trim()]);
             }
             setNewB2B('');
@@ -3420,7 +3344,7 @@
             e.preventDefault();
             if (newB2BProduct.trim() === '') return;
             
-            if (!businessProducts.some(p => String(p).toLowerCase() === newB2BProduct.trim().toLowerCase())) {
+            if (!businessProducts.some(p => p.toLowerCase() === newB2BProduct.trim().toLowerCase())) {
               setBusinessProducts([...businessProducts, newB2BProduct.trim()]);
             }
             setNewB2BProduct('');
@@ -3605,7 +3529,7 @@
                   <div className="flex items-start text-blue-600 bg-blue-50 px-4 py-3 rounded-xl border border-blue-200 text-sm w-full mb-5">
                     <AlertCircle className="w-5 h-5 mr-3 flex-shrink-0 mt-0.5" />
                     <p>
-                      <strong>Note:</strong> Customers with no ID or whose ID is "NA" are <span className="font-semibold underline">automatically</span> added to this list upon upload. You can manually remove them if they are not business customers.
+                      <strong>Note:</strong> Enter exact Customer Names or IDs to classify them as Business (B2B) customers across your dashboard.
                     </p>
                   </div>
 
@@ -3629,7 +3553,7 @@
                     <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Identified Business Customers ({businessCustomers.length})</h4>
                     {businessCustomers.length === 0 ? (
                       <div className="text-center py-6 border-2 border-dashed border-slate-200 rounded-xl bg-slate-50 text-sm text-slate-500 px-4">
-                        No business customers added yet. (Auto-NA logic is still active).
+                        No business customers added yet.
                       </div>
                     ) : (
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -3718,37 +3642,9 @@
           );
         }
 
-        // --- ERROR BOUNDARY ---
-        class ErrorBoundary extends React.Component {
-          constructor(props) {
-            super(props);
-            this.state = { hasError: false, errorInfo: null };
-          }
-          static getDerivedStateFromError(error) {
-            return { hasError: true, errorInfo: error };
-          }
-          render() {
-            if (this.state.hasError) {
-              return (
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', backgroundColor: '#f8fafc', padding: '20px', fontFamily: 'system-ui, sans-serif' }}>
-                    <div style={{ backgroundColor: 'white', padding: '40px', borderRadius: '24px', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)', textAlign: 'center', maxWidth: '500px' }}>
-                        <h2 style={{ fontSize: '24px', fontWeight: 'bold', color: '#0f172a', marginBottom: '10px' }}>Dashboard Recovered from a Crash</h2>
-                        <p style={{ color: '#64748b', marginBottom: '20px' }}>Corrupted or missing data was detected in your files or settings.</p>
-                        <code style={{ display: 'block', backgroundColor: '#f1f5f9', padding: '15px', borderRadius: '12px', color: '#ef4444', fontSize: '12px', textAlign: 'left', overflow: 'auto', marginBottom: '20px', maxHeight: '150px' }}>
-                            {this.state.errorInfo && this.state.errorInfo.toString()}
-                        </code>
-                        <button onClick={() => window.location.reload()} style={{ backgroundColor: '#4f46e5', color: 'white', padding: '10px 24px', borderRadius: '12px', fontWeight: '600', border: 'none', cursor: 'pointer' }}>Reload Dashboard</button>
-                    </div>
-                </div>
-              );
-            }
-            return this.props.children;
-          }
-        }
-
         // --- RENDER APP TO DOM ---
         const root = createRoot(document.getElementById('root'));
-        root.render(<ErrorBoundary><App /></ErrorBoundary>);
+        root.render(<App />);
     </script>
 </body>
 </html>
